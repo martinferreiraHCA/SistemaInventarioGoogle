@@ -6,7 +6,6 @@
  */
 
 const SPREADSHEET_ID = '1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE';
-const FOLDER_ID = ''; // ID de carpeta de Drive para fotos (se creará automáticamente)
 
 // Nombres de las hojas
 const SHEETS = {
@@ -36,43 +35,51 @@ function initializeSheets() {
   let inventarioSheet = ss.getSheetByName(SHEETS.INVENTARIO);
   if (!inventarioSheet) {
     inventarioSheet = ss.insertSheet(SHEETS.INVENTARIO);
-    inventarioSheet.getRange(1, 1, 1, 9).setValues([[
-      'ID', 'Nombre', 'Cantidad', 'Estado', 'Categoria', 'Descripcion', 'FotoURL', 'FechaCreacion', 'UltimaModificacion'
+    inventarioSheet.getRange(1, 1, 1, 7).setValues([[
+      'ID', 'Nombre', 'Cantidad', 'Estado', 'Categoria', 'Descripcion', 'Foto'
     ]]);
-    inventarioSheet.getRange(1, 1, 1, 9).setFontWeight('bold');
+    inventarioSheet.getRange(1, 1, 1, 7).setFontWeight('bold');
+    inventarioSheet.setFrozenRows(1);
   }
 
   // Usuarios
   let usuariosSheet = ss.getSheetByName(SHEETS.USUARIOS);
   if (!usuariosSheet) {
     usuariosSheet = ss.insertSheet(SHEETS.USUARIOS);
-    usuariosSheet.getRange(1, 1, 1, 6).setValues([[
-      'ID', 'Email', 'Nombre', 'Rol', 'FechaCreacion', 'Activo'
+    usuariosSheet.getRange(1, 1, 1, 5).setValues([[
+      'ID', 'Nombre', 'Email', 'Password', 'Rol'
     ]]);
-    usuariosSheet.getRange(1, 1, 1, 6).setFontWeight('bold');
-    // Agregar usuario admin por defecto
+    usuariosSheet.getRange(1, 1, 1, 5).setFontWeight('bold');
+    usuariosSheet.setFrozenRows(1);
+
+    // Agregar usuarios de ejemplo
     const adminId = Utilities.getUuid();
-    usuariosSheet.appendRow([adminId, Session.getActiveUser().getEmail() || 'admin@lab.com', 'Administrador', 'preparador', new Date(), true]);
+    const docenteId = Utilities.getUuid();
+    usuariosSheet.appendRow([adminId, 'Preparador Admin', 'admin@laboratorio.com', 'admin123', 'Preparador']);
+    usuariosSheet.appendRow([docenteId, 'Docente Ejemplo', 'docente@laboratorio.com', 'docente123', 'Docente']);
   }
 
   // Solicitudes
   let solicitudesSheet = ss.getSheetByName(SHEETS.SOLICITUDES);
   if (!solicitudesSheet) {
     solicitudesSheet = ss.insertSheet(SHEETS.SOLICITUDES);
-    solicitudesSheet.getRange(1, 1, 1, 12).setValues([[
-      'ID', 'DocenteEmail', 'DocenteNombre', 'Materiales', 'Descripcion', 'FechaInicio', 'FechaFin', 'FechaNecesita', 'Estado', 'FotoPreparacion', 'FechaPreparacion', 'PreparadorEmail'
+    solicitudesSheet.getRange(1, 1, 1, 11).setValues([[
+      'ID', 'Nombre', 'FechaInicio', 'FechaFin', 'FechaNecesaria', 'Materiales', 'MaterialesExtra',
+      'Docente', 'DocenteEmail', 'Estado', 'FotoPreparada', 'ObservacionesPreparador'
     ]]);
-    solicitudesSheet.getRange(1, 1, 1, 12).setFontWeight('bold');
+    solicitudesSheet.getRange(1, 1, 1, 11).setFontWeight('bold');
+    solicitudesSheet.setFrozenRows(1);
   }
 
   // Bitácora
   let bitacoraSheet = ss.getSheetByName(SHEETS.BITACORA);
   if (!bitacoraSheet) {
     bitacoraSheet = ss.insertSheet(SHEETS.BITACORA);
-    bitacoraSheet.getRange(1, 1, 1, 7).setValues([[
-      'ID', 'Fecha', 'PreparadorEmail', 'Actividad', 'Items', 'Usuario', 'Notas'
+    bitacoraSheet.getRange(1, 1, 1, 6).setValues([[
+      'ID', 'Fecha', 'Practica', 'Items', 'Usuario', 'Observaciones', 'Preparador'
     ]]);
-    bitacoraSheet.getRange(1, 1, 1, 7).setFontWeight('bold');
+    bitacoraSheet.getRange(1, 1, 1, 6).setFontWeight('bold');
+    bitacoraSheet.setFrozenRows(1);
   }
 
   return { success: true, message: 'Hojas inicializadas correctamente' };
@@ -93,78 +100,35 @@ function getOrCreatePhotoFolder() {
 }
 
 /**
- * Sube una imagen a Drive
+ * Sube una imagen a Drive (base64)
  */
 function uploadImage(base64Data, fileName) {
   try {
+    if (!base64Data || !base64Data.startsWith('data:')) {
+      return { success: false, error: 'Datos de imagen inválidos' };
+    }
+
     const folder = getOrCreatePhotoFolder();
     const contentType = base64Data.match(/data:([^;]+);/)[1];
     const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, '');
     const blob = Utilities.newBlob(Utilities.base64Decode(base64Content), contentType, fileName);
     const file = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return { success: true, url: file.getUrl(), id: file.getId() };
+
+    // Retornar URL de visualización directa
+    return { success: true, url: 'https://drive.google.com/uc?id=' + file.getId() };
   } catch (error) {
+    Logger.log('Error al subir imagen: ' + error);
     return { success: false, error: error.toString() };
   }
 }
 
-// ==================== USUARIOS ====================
+// ==================== AUTENTICACIÓN ====================
 
 /**
- * Obtiene el usuario actual
+ * Autentica un usuario
  */
-function getCurrentUser() {
-  const email = Session.getActiveUser().getEmail();
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEETS.USUARIOS);
-
-  if (!sheet) {
-    initializeSheets();
-    return getCurrentUser();
-  }
-
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][1] === email && data[i][5] === true) {
-      return {
-        success: true,
-        user: {
-          id: data[i][0],
-          email: data[i][1],
-          nombre: data[i][2],
-          rol: data[i][3],
-          fechaCreacion: data[i][4],
-          activo: data[i][5]
-        }
-      };
-    }
-  }
-
-  // Si no hay usuario, devolver el primero activo (para pruebas)
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][5] === true) {
-      return {
-        success: true,
-        user: {
-          id: data[i][0],
-          email: data[i][1],
-          nombre: data[i][2],
-          rol: data[i][3],
-          fechaCreacion: data[i][4],
-          activo: data[i][5]
-        }
-      };
-    }
-  }
-
-  return { success: false, error: 'Usuario no encontrado o no autorizado' };
-}
-
-/**
- * Obtiene todos los usuarios
- */
-function getUsuarios() {
+function loginUser(email, password) {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.USUARIOS);
@@ -175,91 +139,25 @@ function getUsuarios() {
     }
 
     const data = sheet.getDataRange().getValues();
-    const usuarios = [];
 
     for (let i = 1; i < data.length; i++) {
-      usuarios.push({
-        id: data[i][0],
-        email: data[i][1],
-        nombre: data[i][2],
-        rol: data[i][3],
-        fechaCreacion: data[i][4],
-        activo: data[i][5]
-      });
-    }
-
-    return { success: true, usuarios: usuarios };
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Agrega un nuevo usuario
- */
-function addUsuario(email, nombre, rol) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.USUARIOS);
-
-    // Verificar si el email ya existe
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][1] === email) {
-        return { success: false, error: 'El email ya está registrado' };
+      if (data[i][2] === email && data[i][3] === password) {
+        return {
+          success: true,
+          user: {
+            id: data[i][0],
+            nombre: data[i][1],
+            email: data[i][2],
+            rol: data[i][4]
+          }
+        };
       }
     }
 
-    const id = Utilities.getUuid();
-    sheet.appendRow([id, email, nombre, rol, new Date(), true]);
-
-    return { success: true, id: id };
+    return { success: false, message: 'Email o contraseña incorrectos' };
   } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Actualiza un usuario
- */
-function updateUsuario(id, email, nombre, rol, activo) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.USUARIOS);
-    const data = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === id) {
-        sheet.getRange(i + 1, 2, 1, 4).setValues([[email, nombre, rol, activo]]);
-        return { success: true };
-      }
-    }
-
-    return { success: false, error: 'Usuario no encontrado' };
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Elimina un usuario
- */
-function deleteUsuario(id) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.USUARIOS);
-    const data = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === id) {
-        sheet.deleteRow(i + 1);
-        return { success: true };
-      }
-    }
-
-    return { success: false, error: 'Usuario no encontrado' };
-  } catch (error) {
-    return { success: false, error: error.toString() };
+    Logger.log('Error en login: ' + error);
+    return { success: false, message: 'Error al iniciar sesión: ' + error.toString() };
   }
 }
 
@@ -275,90 +173,91 @@ function getInventario() {
 
     if (!sheet) {
       initializeSheets();
-      sheet = ss.getSheetByName(SHEETS.INVENTARIO);
+      return [];
     }
 
     const data = sheet.getDataRange().getValues();
     const elementos = [];
 
     for (let i = 1; i < data.length; i++) {
-      elementos.push({
-        id: data[i][0],
-        nombre: data[i][1],
-        cantidad: data[i][2],
-        estado: data[i][3],
-        categoria: data[i][4],
-        descripcion: data[i][5],
-        fotoURL: data[i][6],
-        fechaCreacion: data[i][7],
-        ultimaModificacion: data[i][8]
-      });
+      if (data[i][0]) { // Si tiene ID
+        elementos.push({
+          id: data[i][0],
+          nombre: data[i][1],
+          cantidad: data[i][2],
+          estado: data[i][3],
+          categoria: data[i][4],
+          descripcion: data[i][5] || '',
+          foto: data[i][6] || ''
+        });
+      }
     }
 
-    return { success: true, elementos: elementos };
+    return elementos;
   } catch (error) {
-    return { success: false, error: error.toString() };
+    Logger.log('Error al obtener inventario: ' + error);
+    return [];
   }
 }
 
 /**
- * Agrega un nuevo elemento al inventario
+ * Guarda un elemento (nuevo o actualiza existente)
  */
-function addElemento(nombre, cantidad, estado, categoria, descripcion, fotoBase64) {
+function saveElemento(elemento) {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.INVENTARIO);
+    let sheet = ss.getSheetByName(SHEETS.INVENTARIO);
 
-    let fotoURL = '';
-    if (fotoBase64) {
+    if (!sheet) {
+      initializeSheets();
+      sheet = ss.getSheetByName(SHEETS.INVENTARIO);
+    }
+
+    // Procesar foto si existe
+    let fotoURL = elemento.foto || '';
+    if (elemento.foto && elemento.foto.startsWith('data:')) {
       const fileName = 'elemento_' + Date.now() + '.jpg';
-      const uploadResult = uploadImage(fotoBase64, fileName);
+      const uploadResult = uploadImage(elemento.foto, fileName);
       if (uploadResult.success) {
         fotoURL = uploadResult.url;
       }
     }
 
-    const id = Utilities.getUuid();
-    const now = new Date();
-    sheet.appendRow([id, nombre, cantidad, estado, categoria, descripcion, fotoURL, now, now]);
-
-    return { success: true, id: id, fotoURL: fotoURL };
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Actualiza un elemento del inventario
- */
-function updateElemento(id, nombre, cantidad, estado, categoria, descripcion, fotoBase64) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.INVENTARIO);
     const data = sheet.getDataRange().getValues();
 
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === id) {
-        let fotoURL = data[i][6];
-
-        if (fotoBase64 && fotoBase64.startsWith('data:')) {
-          const fileName = 'elemento_' + Date.now() + '.jpg';
-          const uploadResult = uploadImage(fotoBase64, fileName);
-          if (uploadResult.success) {
-            fotoURL = uploadResult.url;
-          }
+    // Si tiene ID, actualizar
+    if (elemento.id) {
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === elemento.id) {
+          sheet.getRange(i + 1, 1, 1, 7).setValues([[
+            elemento.id,
+            elemento.nombre,
+            elemento.cantidad,
+            elemento.estado,
+            elemento.categoria,
+            elemento.descripcion,
+            fotoURL
+          ]]);
+          return { success: true };
         }
-
-        sheet.getRange(i + 1, 2, 1, 8).setValues([[
-          nombre, cantidad, estado, categoria, descripcion, fotoURL, data[i][7], new Date()
-        ]]);
-
-        return { success: true, fotoURL: fotoURL };
       }
     }
 
-    return { success: false, error: 'Elemento no encontrado' };
+    // Si no tiene ID o no se encontró, crear nuevo
+    const id = Utilities.getUuid();
+    sheet.appendRow([
+      id,
+      elemento.nombre,
+      elemento.cantidad,
+      elemento.estado,
+      elemento.categoria,
+      elemento.descripcion,
+      fotoURL
+    ]);
+
+    return { success: true };
   } catch (error) {
+    Logger.log('Error al guardar elemento: ' + error);
     return { success: false, error: error.toString() };
   }
 }
@@ -381,165 +280,7 @@ function deleteElemento(id) {
 
     return { success: false, error: 'Elemento no encontrado' };
   } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-// ==================== SOLICITUDES ====================
-
-/**
- * Obtiene todas las solicitudes
- */
-function getSolicitudes(filtroEstado) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    let sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
-
-    if (!sheet) {
-      initializeSheets();
-      sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
-    }
-
-    const data = sheet.getDataRange().getValues();
-    const solicitudes = [];
-
-    for (let i = 1; i < data.length; i++) {
-      const solicitud = {
-        id: data[i][0],
-        docenteEmail: data[i][1],
-        docenteNombre: data[i][2],
-        materiales: data[i][3],
-        descripcion: data[i][4],
-        fechaInicio: data[i][5],
-        fechaFin: data[i][6],
-        fechaNecesita: data[i][7],
-        estado: data[i][8],
-        fotoPreparacion: data[i][9],
-        fechaPreparacion: data[i][10],
-        preparadorEmail: data[i][11]
-      };
-
-      if (!filtroEstado || solicitud.estado === filtroEstado) {
-        solicitudes.push(solicitud);
-      }
-    }
-
-    return { success: true, solicitudes: solicitudes };
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Obtiene solicitudes de un docente específico
- */
-function getSolicitudesDocente(email) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
-    const data = sheet.getDataRange().getValues();
-    const solicitudes = [];
-
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][1] === email) {
-        solicitudes.push({
-          id: data[i][0],
-          docenteEmail: data[i][1],
-          docenteNombre: data[i][2],
-          materiales: data[i][3],
-          descripcion: data[i][4],
-          fechaInicio: data[i][5],
-          fechaFin: data[i][6],
-          fechaNecesita: data[i][7],
-          estado: data[i][8],
-          fotoPreparacion: data[i][9],
-          fechaPreparacion: data[i][10],
-          preparadorEmail: data[i][11]
-        });
-      }
-    }
-
-    return { success: true, solicitudes: solicitudes };
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Crea una nueva solicitud de práctica
- */
-function addSolicitud(docenteEmail, docenteNombre, materiales, descripcion, fechaInicio, fechaFin, fechaNecesita) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
-
-    const id = Utilities.getUuid();
-    sheet.appendRow([
-      id, docenteEmail, docenteNombre, materiales, descripcion,
-      fechaInicio, fechaFin, fechaNecesita, 'pendiente', '', '', ''
-    ]);
-
-    return { success: true, id: id };
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Marca una solicitud como preparada
- */
-function marcarSolicitudPreparada(id, preparadorEmail, fotoBase64) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
-    const data = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === id) {
-        let fotoURL = '';
-        if (fotoBase64) {
-          const fileName = 'preparacion_' + Date.now() + '.jpg';
-          const uploadResult = uploadImage(fotoBase64, fileName);
-          if (uploadResult.success) {
-            fotoURL = uploadResult.url;
-          }
-        }
-
-        sheet.getRange(i + 1, 9, 1, 4).setValues([['preparada', fotoURL, new Date(), preparadorEmail]]);
-
-        // Enviar notificación al docente
-        const docenteEmail = data[i][1];
-        sendNotification(docenteEmail, 'Práctica lista',
-          'Su solicitud de práctica ha sido preparada y está lista para retirar.');
-
-        return { success: true, fotoURL: fotoURL };
-      }
-    }
-
-    return { success: false, error: 'Solicitud no encontrada' };
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Actualiza el estado de una solicitud
- */
-function updateSolicitudEstado(id, estado) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
-    const data = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === id) {
-        sheet.getRange(i + 1, 9).setValue(estado);
-        return { success: true };
-      }
-    }
-
-    return { success: false, error: 'Solicitud no encontrada' };
-  } catch (error) {
+    Logger.log('Error al eliminar elemento: ' + error);
     return { success: false, error: error.toString() };
   }
 }
@@ -556,57 +297,303 @@ function getBitacora() {
 
     if (!sheet) {
       initializeSheets();
-      sheet = ss.getSheetByName(SHEETS.BITACORA);
+      return [];
     }
 
     const data = sheet.getDataRange().getValues();
     const entradas = [];
 
     for (let i = 1; i < data.length; i++) {
-      entradas.push({
-        id: data[i][0],
-        fecha: data[i][1],
-        preparadorEmail: data[i][2],
-        actividad: data[i][3],
-        items: data[i][4],
-        usuario: data[i][5],
-        notas: data[i][6]
-      });
+      if (data[i][0]) {
+        entradas.push({
+          id: data[i][0],
+          fecha: data[i][1],
+          practica: data[i][2],
+          items: data[i][3],
+          usuario: data[i][4],
+          observaciones: data[i][5] || '',
+          preparador: data[i][6] || ''
+        });
+      }
     }
 
     // Ordenar por fecha descendente
     entradas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
-    return { success: true, entradas: entradas };
+    return entradas;
   } catch (error) {
-    return { success: false, error: error.toString() };
+    Logger.log('Error al obtener bitácora: ' + error);
+    return [];
   }
 }
 
 /**
- * Agrega una entrada a la bitácora
+ * Guarda una entrada de bitácora
  */
-function addBitacora(preparadorEmail, actividad, items, usuario, notas) {
+function saveBitacora(entry) {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.BITACORA);
+    let sheet = ss.getSheetByName(SHEETS.BITACORA);
+
+    if (!sheet) {
+      initializeSheets();
+      sheet = ss.getSheetByName(SHEETS.BITACORA);
+    }
 
     const id = Utilities.getUuid();
-    sheet.appendRow([id, new Date(), preparadorEmail, actividad, items, usuario, notas]);
+    sheet.appendRow([
+      id,
+      entry.fecha,
+      entry.practica,
+      entry.items,
+      entry.usuario,
+      entry.observaciones || '',
+      entry.preparador || ''
+    ]);
 
-    return { success: true, id: id };
+    return { success: true };
   } catch (error) {
+    Logger.log('Error al guardar bitácora: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== SOLICITUDES ====================
+
+/**
+ * Obtiene todas las solicitudes
+ */
+function getAllSolicitudes() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
+
+    if (!sheet) {
+      initializeSheets();
+      return [];
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const solicitudes = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        solicitudes.push({
+          id: data[i][0],
+          nombre: data[i][1],
+          fechaInicio: formatDate(data[i][2]),
+          fechaFin: formatDate(data[i][3]),
+          fechaNecesaria: formatDate(data[i][4]),
+          materiales: data[i][5],
+          materialesExtra: data[i][6] || '',
+          docente: data[i][7],
+          docenteEmail: data[i][8],
+          estado: data[i][9] || 'Pendiente',
+          fotoPreparada: data[i][10] || '',
+          observacionesPreparador: data[i][11] || ''
+        });
+      }
+    }
+
+    return solicitudes;
+  } catch (error) {
+    Logger.log('Error al obtener solicitudes: ' + error);
+    return [];
+  }
+}
+
+/**
+ * Obtiene solicitudes de un docente específico
+ */
+function getSolicitudesByDocente(email) {
+  try {
+    const solicitudes = getAllSolicitudes();
+    return solicitudes.filter(s => s.docenteEmail === email);
+  } catch (error) {
+    Logger.log('Error al obtener solicitudes del docente: ' + error);
+    return [];
+  }
+}
+
+/**
+ * Guarda una nueva solicitud
+ */
+function saveSolicitud(solicitud) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
+
+    if (!sheet) {
+      initializeSheets();
+      sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
+    }
+
+    const id = Utilities.getUuid();
+    sheet.appendRow([
+      id,
+      solicitud.nombre,
+      solicitud.fechaInicio,
+      solicitud.fechaFin,
+      solicitud.fechaNecesaria,
+      solicitud.materiales,
+      solicitud.materialesExtra || '',
+      solicitud.docente,
+      solicitud.docenteEmail,
+      'Pendiente',
+      '',
+      ''
+    ]);
+
+    return { success: true };
+  } catch (error) {
+    Logger.log('Error al guardar solicitud: ' + error);
     return { success: false, error: error.toString() };
   }
 }
 
 /**
- * Elimina una entrada de la bitácora
+ * Marca una solicitud como preparada
  */
-function deleteBitacora(id) {
+function marcarSolicitudPreparada(data) {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.BITACORA);
+    const sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
+    const sheetData = sheet.getDataRange().getValues();
+
+    // Procesar foto si existe
+    let fotoURL = '';
+    if (data.foto && data.foto.startsWith('data:')) {
+      const fileName = 'preparacion_' + Date.now() + '.jpg';
+      const uploadResult = uploadImage(data.foto, fileName);
+      if (uploadResult.success) {
+        fotoURL = uploadResult.url;
+      }
+    }
+
+    for (let i = 1; i < sheetData.length; i++) {
+      if (sheetData[i][0] === data.id) {
+        // Actualizar estado, foto y observaciones
+        sheet.getRange(i + 1, 10, 1, 3).setValues([['Preparada', fotoURL, data.observaciones || '']]);
+
+        // Enviar notificación al docente
+        const docenteEmail = sheetData[i][8];
+        const nombrePractica = sheetData[i][1];
+        sendNotification(
+          docenteEmail,
+          'Práctica Lista',
+          'Su solicitud "' + nombrePractica + '" ha sido preparada y está lista para usar.'
+        );
+
+        return { success: true };
+      }
+    }
+
+    return { success: false, error: 'Solicitud no encontrada' };
+  } catch (error) {
+    Logger.log('Error al marcar solicitud como preparada: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== USUARIOS ====================
+
+/**
+ * Obtiene todos los usuarios
+ */
+function getUsuarios() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.USUARIOS);
+
+    if (!sheet) {
+      initializeSheets();
+      return [];
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const usuarios = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        usuarios.push({
+          id: data[i][0],
+          nombre: data[i][1],
+          email: data[i][2],
+          password: data[i][3],
+          rol: data[i][4]
+        });
+      }
+    }
+
+    return usuarios;
+  } catch (error) {
+    Logger.log('Error al obtener usuarios: ' + error);
+    return [];
+  }
+}
+
+/**
+ * Guarda un usuario (nuevo o actualiza existente)
+ */
+function saveUsuario(usuario) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.USUARIOS);
+
+    if (!sheet) {
+      initializeSheets();
+      sheet = ss.getSheetByName(SHEETS.USUARIOS);
+    }
+
+    const data = sheet.getDataRange().getValues();
+
+    // Verificar si el email ya existe (excepto si es el mismo usuario)
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][2] === usuario.email && data[i][0] !== usuario.id) {
+        return { success: false, error: 'El email ya está registrado' };
+      }
+    }
+
+    // Si tiene ID, actualizar
+    if (usuario.id) {
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === usuario.id) {
+          sheet.getRange(i + 1, 1, 1, 5).setValues([[
+            usuario.id,
+            usuario.nombre,
+            usuario.email,
+            usuario.password,
+            usuario.rol
+          ]]);
+          return { success: true };
+        }
+      }
+    }
+
+    // Si no tiene ID o no se encontró, crear nuevo
+    const id = Utilities.getUuid();
+    sheet.appendRow([
+      id,
+      usuario.nombre,
+      usuario.email,
+      usuario.password,
+      usuario.rol
+    ]);
+
+    return { success: true };
+  } catch (error) {
+    Logger.log('Error al guardar usuario: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Elimina un usuario
+ */
+function deleteUsuario(id) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEETS.USUARIOS);
     const data = sheet.getDataRange().getValues();
 
     for (let i = 1; i < data.length; i++) {
@@ -616,8 +603,9 @@ function deleteBitacora(id) {
       }
     }
 
-    return { success: false, error: 'Entrada no encontrada' };
+    return { success: false, error: 'Usuario no encontrado' };
   } catch (error) {
+    Logger.log('Error al eliminar usuario: ' + error);
     return { success: false, error: error.toString() };
   }
 }
@@ -646,58 +634,34 @@ function sendNotification(email, subject, body) {
     });
     return { success: true };
   } catch (error) {
+    Logger.log('Error al enviar notificación: ' + error);
     return { success: false, error: error.toString() };
   }
 }
 
-// ==================== ESTADÍSTICAS ====================
+// ==================== UTILIDADES ====================
 
 /**
- * Obtiene estadísticas del laboratorio
+ * Formatea una fecha para mostrar
  */
-function getEstadisticas() {
+function formatDate(date) {
+  if (!date) return '';
+  if (typeof date === 'string') return date;
+
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-
-    // Inventario
-    const invSheet = ss.getSheetByName(SHEETS.INVENTARIO);
-    const invData = invSheet ? invSheet.getDataRange().getValues() : [];
-    const totalElementos = Math.max(0, invData.length - 1);
-
-    let enFuncionamiento = 0;
-    let enReparacion = 0;
-    const categorias = {};
-
-    for (let i = 1; i < invData.length; i++) {
-      if (invData[i][3] === 'funcionamiento') enFuncionamiento++;
-      if (invData[i][3] === 'reparacion') enReparacion++;
-      const cat = invData[i][4] || 'Sin categoría';
-      categorias[cat] = (categorias[cat] || 0) + 1;
-    }
-
-    // Solicitudes
-    const solSheet = ss.getSheetByName(SHEETS.SOLICITUDES);
-    const solData = solSheet ? solSheet.getDataRange().getValues() : [];
-    let solicitudesPendientes = 0;
-    let solicitudesPreparadas = 0;
-
-    for (let i = 1; i < solData.length; i++) {
-      if (solData[i][8] === 'pendiente') solicitudesPendientes++;
-      if (solData[i][8] === 'preparada') solicitudesPreparadas++;
-    }
-
-    return {
-      success: true,
-      estadisticas: {
-        totalElementos,
-        enFuncionamiento,
-        enReparacion,
-        categorias,
-        solicitudesPendientes,
-        solicitudesPreparadas
-      }
-    };
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   } catch (error) {
-    return { success: false, error: error.toString() };
+    return date.toString();
   }
+}
+
+/**
+ * Función para ejecutar al configurar el proyecto
+ */
+function onInstall() {
+  initializeSheets();
 }
