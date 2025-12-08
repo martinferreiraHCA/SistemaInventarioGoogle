@@ -782,7 +782,11 @@
                             <option value="">Todas las categorías</option>
                             <option value="Mecánica">Mecánica</option>
                             <option value="Electromagnetismo">Electromagnetismo</option>
+                            <option value="Óptica">Óptica</option>
                             <option value="Termodinámica">Termodinámica</option>
+                            <option value="Ondas y Acústica">Ondas y Acústica</option>
+                            <option value="Física Moderna">Física Moderna</option>
+                            <option value="Electrónica">Electrónica</option>
                             <option value="Otros">Otros</option>
                         </select>
                         <select id="filterEstado">
@@ -792,6 +796,14 @@
                         </select>
                         <button class="btn btn-primary" id="btnAgregarElemento" onclick="openAddElementModal()">+ Agregar Elemento</button>
                     </div>
+
+                    <!-- Botones de importar/exportar (solo para Preparador) -->
+                    <div id="csvInventarioButtons" style="margin-bottom: 20px; display: none; gap: 10px;">
+                        <button class="btn btn-primary" onclick="exportInventario()">⬇ Exportar CSV</button>
+                        <button class="btn btn-primary" onclick="document.getElementById('importInventarioCSV').click()">⬆ Importar CSV</button>
+                        <input type="file" id="importInventarioCSV" accept=".csv" style="display: none;" onchange="importInventario(event)">
+                    </div>
+
                     <div id="inventarioTable"></div>
                 </div>
             </div>
@@ -880,7 +892,11 @@
                     <select id="elementoCategoria" required>
                         <option value="Mecánica">Mecánica</option>
                         <option value="Electromagnetismo">Electromagnetismo</option>
+                        <option value="Óptica">Óptica</option>
                         <option value="Termodinámica">Termodinámica</option>
+                        <option value="Ondas y Acústica">Ondas y Acústica</option>
+                        <option value="Física Moderna">Física Moderna</option>
+                        <option value="Electrónica">Electrónica</option>
                         <option value="Otros">Otros</option>
                     </select>
                 </div>
@@ -1185,10 +1201,14 @@
 
             menuNav.innerHTML = html;
 
-            // Ocultar botón de agregar elemento para docentes
+            // Ocultar botón de agregar elemento para docentes y mostrar botones CSV para preparadores
             if (currentUser.rol !== 'Preparador') {
                 const btnAgregar = document.getElementById('btnAgregarElemento');
                 if (btnAgregar) btnAgregar.style.display = 'none';
+            } else {
+                // Mostrar botones de CSV para preparadores
+                const csvButtons = document.getElementById('csvInventarioButtons');
+                if (csvButtons) csvButtons.style.display = 'flex';
             }
         }
 
@@ -2101,6 +2121,65 @@
                     showNotification('Error: ' + error.message, 'error');
                 })
                 .cambiarPassword(currentUser.email, currentPassword, newPassword);
+        }
+
+        // ==================== IMPORTAR/EXPORTAR INVENTARIO ====================
+
+        function exportInventario() {
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        window.open(result.downloadUrl, '_blank');
+                        showNotification('Inventario exportado correctamente');
+                    } else {
+                        showNotification('Error al exportar inventario: ' + result.error, 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .exportInventarioToCSV();
+        }
+
+        function importInventario(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csvContent = e.target.result;
+
+                showLoading();
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        hideLoading();
+                        if (result.success) {
+                            let mensaje = `${result.importCount} elementos importados correctamente`;
+                            if (result.errorCount > 0) {
+                                mensaje += `. ${result.errorCount} errores encontrados`;
+                            }
+                            showNotification(mensaje);
+                            loadInventario();
+                            if (currentUser.rol === 'Preparador') {
+                                loadEstadisticas();
+                            }
+                            // Limpiar el input file
+                            document.getElementById('importInventarioCSV').value = '';
+                        } else {
+                            showNotification('Error al importar: ' + result.error, 'error');
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        hideLoading();
+                        showNotification('Error: ' + error.message, 'error');
+                    })
+                    .importInventarioFromCSV(csvContent);
+            };
+
+            reader.readAsText(file);
         }
     </script>
 </body>

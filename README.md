@@ -5,12 +5,17 @@ Sistema completo de gestión de laboratorio con inventario, bitácora, solicitud
 ## 🎨 Características
 
 - **Diseño Minimalista y Responsive**: Interfaz limpia que funciona en escritorio y móvil
-- **Gestión de Inventario**: Registro completo de elementos con fotos, cantidades, estados y categorías
+- **Gestión de Inventario**: Registro completo de elementos con fotos, cantidades, estados y 8 categorías de física
+- **Importar/Exportar CSV**: Gestión masiva de inventario y bitácora mediante archivos CSV
+- **Estadísticas en Tiempo Real**: Panel de métricas con alertas de stock bajo y items en reparación
+- **Búsqueda Avanzada**: Filtros por fechas, texto y categorías en bitácora e inventario
 - **Sistema de Roles**: Dos roles (Preparador/Admin y Docente) con diferentes permisos
-- **Bitácora del Laboratorio**: Registro detallado de actividades del preparador
+- **Bitácora del Laboratorio**: Registro detallado de actividades con edición y búsqueda avanzada
 - **Sistema de Solicitudes**: Los docentes pueden solicitar materiales y el preparador puede gestionarlas
-- **Notificaciones por Email**: Notificaciones automáticas cuando las prácticas están listas
-- **Upload de Imágenes**: Permite subir fotos de elementos y materiales preparados
+- **Notificaciones por Email**: Automáticas cuando hay nuevas solicitudes o prácticas listas
+- **Upload de Imágenes**: Subir fotos de elementos y materiales preparados a Google Drive
+- **Cambio de Contraseña**: Los usuarios pueden cambiar su contraseña desde la interfaz
+- **Validación de Datos**: Validación completa de formularios con mensajes descriptivos
 
 ## 🎨 Paleta de Colores
 
@@ -85,7 +90,9 @@ const INVENTARIO_SPREADSHEET_ID = 'ID_DE_TU_HOJA_INVENTARIO';
 
 ## 👥 Usuarios de Ejemplo
 
-El sistema viene con dos usuarios predefinidos para que puedas probar:
+⚠️ **IMPORTANTE**: Los usuarios se crean automáticamente cuando ejecutas la función `initializeSheets()` (paso 4 de la instalación).
+
+El sistema crea dos usuarios predefinidos para que puedas probar:
 
 ### Preparador (Admin)
 - **Email**: `admin@laboratorio.com`
@@ -97,26 +104,51 @@ El sistema viene con dos usuarios predefinidos para que puedas probar:
 - **Contraseña**: `docente123`
 - **Permisos**: Ver inventario y crear solicitudes
 
+### ⚠️ Si los usuarios no funcionan:
+1. Abre el editor de Apps Script
+2. Selecciona la función `initializeSheets` en el menú desplegable superior
+3. Haz clic en el botón **Ejecutar** (▶️)
+4. Autoriza los permisos si te lo pide
+5. Espera a que termine la ejecución (verás "Ejecución completada" abajo)
+6. Los usuarios ahora deben funcionar - prueba a hacer login
+
 ## 📖 Uso del Sistema
 
 ### Para Preparadores (Admin)
 
 #### Gestión de Inventario
 1. Accede al menú lateral y selecciona **Inventario**
-2. Haz clic en **+ Agregar Elemento**
-3. Completa el formulario:
+2. **Ver estadísticas**: En la parte superior verás tarjetas con:
+   - Total de elementos
+   - Items en funcionamiento
+   - Items en reparación
+   - Total de unidades
+   - Alertas (stock bajo, items en reparación)
+3. **Agregar elementos manualmente**: Haz clic en **+ Agregar Elemento**
    - Nombre del elemento
    - Cantidad disponible
    - Estado (Funcionamiento/Reparación)
-   - Categoría (Mecánica, Electromagnetismo, Termodinámica, Otros)
+   - Categoría: Mecánica, Electromagnetismo, Óptica, Termodinámica, Ondas y Acústica, Física Moderna, Electrónica, Otros
    - Descripción opcional
    - Foto del elemento (opcional)
-4. Puedes filtrar por categoría y estado
-5. Edita o elimina elementos según sea necesario
+4. **Importar inventario desde CSV**:
+   - Haz clic en **⬆ Importar CSV**
+   - Selecciona un archivo CSV con formato: `ID,Nombre,Cantidad,Estado,Categoria,Descripcion,Foto`
+   - El sistema actualizará elementos existentes o creará nuevos
+5. **Exportar inventario a CSV**:
+   - Haz clic en **⬇ Exportar CSV**
+   - Se descargará un archivo CSV con todo tu inventario
+6. Puedes filtrar por categoría y estado usando los selectores
+7. Edita o elimina elementos según sea necesario
 
 #### Bitácora
 1. Selecciona **Bitácora** en el menú lateral
-2. **Crear nueva entrada**:
+2. **Búsqueda avanzada**:
+   - Campo de texto: Busca en práctica, items, usuario u observaciones
+   - Fecha desde/hasta: Filtra por rango de fechas
+   - Haz clic en "Buscar" para aplicar filtros
+   - Haz clic en "Limpiar" para ver todas las entradas
+3. **Crear nueva entrada**:
    - Haz clic en **+ Nueva Entrada**
    - Registra:
      - Fecha de la actividad
@@ -124,11 +156,11 @@ El sistema viene con dos usuarios predefinidos para que puedas probar:
      - Items utilizados
      - Usuario destinatario
      - Observaciones
-3. **Editar entradas**: Haz clic en el botón "Editar" en cualquier entrada
-4. **Eliminar entradas**: Haz clic en el botón "Eliminar"
-5. **Exportar a CSV**: Haz clic en **⬇ Exportar CSV** para descargar toda la bitácora
-6. **Importar desde CSV**: Haz clic en **⬆ Importar CSV** para cargar entradas desde un archivo CSV
-7. **Entradas automáticas**: Cuando marcas una solicitud como preparada, se crea automáticamente una entrada en la bitácora
+4. **Editar entradas**: Haz clic en el botón "Editar" en cualquier entrada
+5. **Eliminar entradas**: Haz clic en el botón "Eliminar"
+6. **Exportar a CSV**: Haz clic en **⬇ Exportar CSV** para descargar toda la bitácora
+7. **Importar desde CSV**: Haz clic en **⬆ Importar CSV** para cargar entradas desde un archivo CSV
+8. **Entradas automáticas**: Cuando marcas una solicitud como preparada, se crea automáticamente una entrada en la bitácora
 
 #### Gestión de Solicitudes
 1. Selecciona **Solicitudes** en el menú lateral
