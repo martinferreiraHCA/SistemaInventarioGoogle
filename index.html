@@ -12,22 +12,27 @@
         }
 
         :root {
-            --azul-principal: #1a1f3a;
-            --azul-hover: #2a3350;
-            --rojo-claro: #e74c3c;
-            --negro: #2c3e50;
-            --verde-claro: #27ae60;
+            --azul-principal: #2563eb;
+            --azul-oscuro: #1e40af;
+            --azul-claro: #3b82f6;
+            --rojo: #ef4444;
+            --rojo-oscuro: #dc2626;
+            --negro: #1f2937;
+            --verde: #10b981;
+            --verde-oscuro: #059669;
             --blanco: #FFFFFF;
-            --gris-claro: #f7f9fc;
-            --gris-medio: #e8ecf1;
-            --border-color: #dfe4ea;
-            --text-secondary: #7f8c8d;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
-            --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
-            --radius-sm: 4px;
-            --radius-md: 8px;
-            --radius-lg: 12px;
+            --gris-claro: #f9fafb;
+            --gris-medio: #e5e7eb;
+            --gris-oscuro: #6b7280;
+            --border-color: #d1d5db;
+            --amarillo: #f59e0b;
+            --morado: #8b5cf6;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+            --shadow-lg: 0 10px 28px rgba(0,0,0,0.2);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
         }
 
         body {
@@ -45,9 +50,9 @@
             position: fixed;
             left: 0;
             top: 0;
-            width: 260px;
+            width: 280px;
             height: 100vh;
-            background: linear-gradient(180deg, var(--azul-principal) 0%, #0f1325 100%);
+            background: var(--azul-principal);
             color: var(--blanco);
             padding: 0;
             overflow-y: auto;
@@ -99,10 +104,10 @@
         }
 
         .menu-item.active {
-            background-color: rgba(39, 174, 96, 0.15);
+            background-color: var(--azul-claro);
             color: var(--blanco);
             font-weight: 600;
-            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.2);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }
 
         .menu-item svg {
@@ -113,9 +118,9 @@
         .logout-btn {
             margin: 20px;
             padding: 12px;
-            background-color: transparent;
-            border: 1.5px solid rgba(231, 76, 60, 0.4);
-            color: rgba(231, 76, 60, 0.9);
+            background-color: var(--rojo);
+            border: none;
+            color: var(--blanco);
             cursor: pointer;
             width: calc(100% - 40px);
             font-size: 13px;
@@ -125,16 +130,14 @@
         }
 
         .logout-btn:hover {
-            background-color: var(--rojo-claro);
-            color: var(--blanco);
-            border-color: var(--rojo-claro);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-sm);
+            background-color: var(--rojo-oscuro);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         /* Contenido principal */
         .main-content {
-            margin-left: 260px;
+            margin-left: 280px;
             padding: 40px;
             min-height: 100vh;
             transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -217,25 +220,25 @@
         }
 
         .btn-primary:hover {
-            background-color: var(--azul-hover);
+            background-color: var(--azul-oscuro);
         }
 
         .btn-success {
-            background-color: var(--verde-claro);
+            background-color: var(--verde);
             color: var(--blanco);
         }
 
         .btn-success:hover {
-            background-color: #229954;
+            background-color: var(--verde-oscuro);
         }
 
         .btn-danger {
-            background-color: var(--rojo-claro);
+            background-color: var(--rojo);
             color: var(--blanco);
         }
 
         .btn-danger:hover {
-            background-color: #c0392b;
+            background-color: var(--rojo-oscuro);
         }
 
         /* Tabla */
@@ -301,18 +304,20 @@
         }
 
         .item-image {
-            width: 54px;
-            height: 54px;
+            width: 80px;
+            height: 80px;
             object-fit: cover;
             cursor: pointer;
             border-radius: var(--radius-md);
-            border: 2px solid var(--gris-medio);
+            border: 2px solid var(--border-color);
             transition: all 0.3s;
+            background-color: var(--gris-medio);
         }
 
         .item-image:hover {
-            transform: scale(1.1);
-            box-shadow: var(--shadow-md);
+            transform: scale(1.15);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--azul-principal);
         }
 
         .status-badge {
@@ -326,15 +331,15 @@
         }
 
         .status-funcionamiento {
-            color: var(--verde-claro);
-            background-color: rgba(39, 174, 96, 0.1);
-            border: 1.5px solid rgba(39, 174, 96, 0.3);
+            color: var(--blanco);
+            background-color: var(--verde);
+            border: none;
         }
 
         .status-reparacion {
-            color: var(--rojo-claro);
-            background-color: rgba(231, 76, 60, 0.1);
-            border: 1.5px solid rgba(231, 76, 60, 0.3);
+            color: var(--blanco);
+            background-color: var(--rojo);
+            border: none;
         }
 
         .action-btn {
@@ -349,27 +354,25 @@
         }
 
         .action-btn.edit {
-            background-color: rgba(39, 174, 96, 0.1);
-            color: var(--verde-claro);
+            background-color: var(--azul-principal);
+            color: var(--blanco);
         }
 
         .action-btn.edit:hover {
-            background-color: var(--verde-claro);
-            color: var(--blanco);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-sm);
+            background-color: var(--azul-oscuro);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .action-btn.delete {
-            background-color: rgba(231, 76, 60, 0.1);
-            color: var(--rojo-claro);
+            background-color: var(--rojo);
+            color: var(--blanco);
         }
 
         .action-btn.delete:hover {
-            background-color: var(--rojo-claro);
-            color: var(--blanco);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-sm);
+            background-color: var(--rojo-oscuro);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         /* Modal */
@@ -486,7 +489,7 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, var(--azul-principal) 0%, #0f1325 100%);
+            background: linear-gradient(135deg, var(--azul-principal) 0%, var(--azul-oscuro) 100%);
         }
 
         .login-box {
@@ -512,7 +515,7 @@
             position: fixed;
             top: 24px;
             right: 24px;
-            background-color: var(--verde-claro);
+            background-color: var(--verde);
             color: var(--blanco);
             padding: 16px 24px;
             border-radius: var(--radius-md);
@@ -525,7 +528,7 @@
         }
 
         .notification.error {
-            background-color: var(--rojo-claro);
+            background-color: var(--rojo);
         }
 
         .notification.active {
@@ -595,15 +598,15 @@
         }
 
         .request-status.pendiente {
-            background-color: rgba(255, 165, 0, 0.1);
-            border: 1.5px solid rgba(255, 165, 0, 0.3);
-            color: #e67e22;
+            background-color: var(--amarillo);
+            border: none;
+            color: var(--blanco);
         }
 
         .request-status.preparada {
-            background-color: rgba(39, 174, 96, 0.1);
-            border: 1.5px solid rgba(39, 174, 96, 0.3);
-            color: var(--verde-claro);
+            background-color: var(--verde);
+            border: none;
+            color: var(--blanco);
         }
 
         /* Bitácora */
@@ -763,14 +766,17 @@
 
         .stat-card.azul {
             border-left-color: var(--azul-principal);
+            border-left-width: 6px;
         }
 
         .stat-card.verde {
-            border-left-color: var(--verde-claro);
+            border-left-color: var(--verde);
+            border-left-width: 6px;
         }
 
         .stat-card.rojo {
-            border-left-color: var(--rojo-claro);
+            border-left-color: var(--rojo);
+            border-left-width: 6px;
         }
 
         .stat-value {
@@ -860,6 +866,12 @@
             <div class="sidebar-header">
                 <h2>Laboratorio</h2>
                 <div class="user-info" id="userInfo"></div>
+                <div id="labSelector" style="margin-top: 16px; display: none;">
+                    <select id="labSelect" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-md); border: 1.5px solid rgba(255,255,255,0.2); background-color: rgba(255,255,255,0.1); color: var(--blanco); font-weight: 500; font-size: 13px;" onchange="changeLaboratorio()">
+                        <option value="STEM">Laboratorio STEM</option>
+                        <option value="Bio-Química">Laboratorio Bio-Química</option>
+                    </select>
+                </div>
             </div>
             <nav id="menuNav"></nav>
             <button class="btn btn-primary" onclick="openPasswordModal()" style="width: calc(100% - 40px); margin: 10px 20px;">Cambiar Contraseña</button>
@@ -1185,6 +1197,7 @@
     <script>
         // Variables globales
         let currentUser = null;
+        let currentLaboratorio = 'STEM'; // Laboratorio actual
         let inventario = [];
         let solicitudes = [];
         let bitacora = [];
@@ -1194,6 +1207,9 @@
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
+            // Verificar si hay sesión guardada
+            checkSavedSession();
+
             // Configurar fecha de hoy como predeterminada
             const today = new Date().toISOString().split('T')[0];
             if (document.getElementById('bitacoraFecha')) {
@@ -1219,6 +1235,41 @@
             document.getElementById('passwordForm').addEventListener('submit', cambiarContrasena);
         });
 
+        // Verificar sesión guardada en localStorage
+        function checkSavedSession() {
+            const savedUser = localStorage.getItem('currentUser');
+            const savedLab = localStorage.getItem('currentLaboratorio');
+
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    currentLaboratorio = savedLab || currentUser.laboratorio || 'STEM';
+                    document.getElementById('loginView').style.display = 'none';
+                    document.getElementById('mainSystem').style.display = 'block';
+                    initializeSystem();
+                } catch (e) {
+                    // Si hay error al parsear, limpiar localStorage
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('currentLaboratorio');
+                }
+            }
+        }
+
+        // Guardar sesión en localStorage
+        function saveSession() {
+            if (currentUser) {
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                localStorage.setItem('currentLaboratorio', currentLaboratorio);
+            }
+        }
+
+        // Limpiar sesión
+        function clearSession() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('currentLaboratorio');
+            currentUser = null;
+        }
+
         // Autenticación
         function login() {
             const email = document.getElementById('loginEmail').value;
@@ -1235,6 +1286,9 @@
                     hideLoading();
                     if (result.success) {
                         currentUser = result.user;
+                        currentLaboratorio = currentUser.laboratorio || 'STEM';
+                        // Guardar sesión en localStorage
+                        saveSession();
                         document.getElementById('loginView').style.display = 'none';
                         document.getElementById('mainSystem').style.display = 'block';
                         initializeSystem();
@@ -1251,7 +1305,7 @@
         }
 
         function logout() {
-            currentUser = null;
+            clearSession(); // Limpiar localStorage
             document.getElementById('loginView').style.display = 'flex';
             document.getElementById('mainSystem').style.display = 'none';
             document.getElementById('loginEmail').value = '';
@@ -1262,9 +1316,20 @@
         // Inicializar sistema
         function initializeSystem() {
             document.getElementById('userInfo').textContent = currentUser.nombre + ' (' + currentUser.rol + ')';
+
+            // Mostrar selector de laboratorio solo para Admin
+            if (currentUser.rol === 'Admin') {
+                document.getElementById('labSelector').style.display = 'block';
+                document.getElementById('labSelect').value = currentLaboratorio;
+            } else {
+                document.getElementById('labSelector').style.display = 'none';
+                // Para preparadores y docentes, usar su laboratorio asignado
+                currentLaboratorio = currentUser.laboratorio || 'STEM';
+            }
+
             loadMenu();
             loadInventario();
-            if (currentUser.rol === 'Preparador') {
+            if (currentUser.rol === 'Preparador' || currentUser.rol === 'Admin') {
                 loadEstadisticas();
                 loadBitacora();
                 loadUsuarios();
@@ -1274,12 +1339,29 @@
             }
         }
 
+        // Cambiar laboratorio (solo para Admin)
+        function changeLaboratorio() {
+            const newLab = document.getElementById('labSelect').value;
+            if (newLab !== currentLaboratorio) {
+                currentLaboratorio = newLab;
+                saveSession(); // Guardar en localStorage
+                showNotification('Cambiado a ' + currentLaboratorio);
+                // Recargar datos del nuevo laboratorio
+                loadInventario();
+                if (currentUser.rol === 'Admin' || currentUser.rol === 'Preparador') {
+                    loadEstadisticas();
+                    loadBitacora();
+                    loadAllSolicitudes();
+                }
+            }
+        }
+
         // Cargar menú según rol
         function loadMenu() {
             const menuNav = document.getElementById('menuNav');
             let menuItems = [];
 
-            if (currentUser.rol === 'Preparador') {
+            if (currentUser.rol === 'Admin' || currentUser.rol === 'Preparador') {
                 menuItems = [
                     { id: 'inventario', text: 'Inventario', view: 'inventarioView' },
                     { id: 'bitacora', text: 'Bitácora', view: 'bitacoraView' },
@@ -1302,12 +1384,12 @@
 
             menuNav.innerHTML = html;
 
-            // Ocultar botón de agregar elemento para docentes y mostrar botones CSV para preparadores
-            if (currentUser.rol !== 'Preparador') {
+            // Ocultar botón de agregar elemento para docentes y mostrar botones CSV para preparadores/admin
+            if (currentUser.rol !== 'Preparador' && currentUser.rol !== 'Admin') {
                 const btnAgregar = document.getElementById('btnAgregarElemento');
                 if (btnAgregar) btnAgregar.style.display = 'none';
             } else {
-                // Mostrar botones de CSV para preparadores
+                // Mostrar botones de CSV para preparadores y admin
                 const csvButtons = document.getElementById('csvInventarioButtons');
                 if (csvButtons) csvButtons.style.display = 'flex';
             }

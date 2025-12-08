@@ -474,11 +474,11 @@ function saveElemento(elemento, laboratorio) {
 }
 
 /**
- * Obtiene estadísticas del inventario
+ * Obtiene estadísticas del inventario por laboratorio
  */
-function getEstadisticasInventario() {
+function getEstadisticasInventario(laboratorio) {
   try {
-    const elementos = getInventario();
+    const elementos = getInventario(laboratorio || LABORATORIOS.STEM);
 
     const stats = {
       totalElementos: elementos.length,
@@ -544,9 +544,13 @@ function getEstadisticasInventario() {
 /**
  * Elimina un elemento del inventario
  */
-function deleteElemento(id) {
+function deleteElemento(id, laboratorio) {
   try {
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return { success: false, error: 'Laboratorio inválido' };
+    }
+
     const sheet = ss.getSheetByName(SHEETS.INVENTARIO);
     const data = sheet.getDataRange().getValues();
 
@@ -565,11 +569,87 @@ function deleteElemento(id) {
 }
 
 /**
+ * Guarda o actualiza una categoría
+ */
+function saveCategoria(categoria, laboratorio) {
+  try {
+    if (!categoria.nombre || categoria.nombre.trim() === '') {
+      return { success: false, error: 'El nombre es requerido' };
+    }
+
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return { success: false, error: 'Laboratorio inválido' };
+    }
+
+    let sheet = ss.getSheetByName(SHEETS.CATEGORIAS);
+    if (!sheet) {
+      return { success: false, error: 'Hoja de categorías no encontrada' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+
+    // Si tiene ID, actualizar
+    if (categoria.id) {
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === categoria.id) {
+          sheet.getRange(i + 1, 1, 1, 2).setValues([[
+            categoria.id,
+            categoria.nombre.trim()
+          ]]);
+          return { success: true };
+        }
+      }
+    }
+
+    // Si no tiene ID o no se encontró, crear nuevo
+    const id = Utilities.getUuid();
+    sheet.appendRow([id, categoria.nombre.trim()]);
+
+    return { success: true };
+  } catch (error) {
+    Logger.log('Error al guardar categoría: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Elimina una categoría
+ */
+function deleteCategoria(id, laboratorio) {
+  try {
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return { success: false, error: 'Laboratorio inválido' };
+    }
+
+    const sheet = ss.getSheetByName(SHEETS.CATEGORIAS);
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === id) {
+        sheet.deleteRow(i + 1);
+        return { success: true };
+      }
+    }
+
+    return { success: false, error: 'Categoría no encontrada' };
+  } catch (error) {
+    Logger.log('Error al eliminar categoría: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
  * Exporta el inventario a formato CSV
  */
-function exportInventarioToCSV() {
+function exportInventarioToCSV(laboratorio) {
   try {
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return { success: false, error: 'Laboratorio inválido' };
+    }
+
     const sheet = ss.getSheetByName(SHEETS.INVENTARIO);
 
     if (!sheet) {
