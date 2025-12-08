@@ -866,6 +866,12 @@
             <div class="sidebar-header">
                 <h2>Laboratorio</h2>
                 <div class="user-info" id="userInfo"></div>
+                <div id="labSelector" style="margin-top: 16px; display: none;">
+                    <select id="labSelect" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-md); border: 1.5px solid rgba(255,255,255,0.2); background-color: rgba(255,255,255,0.1); color: var(--blanco); font-weight: 500; font-size: 13px;" onchange="changeLaboratorio()">
+                        <option value="STEM">Laboratorio STEM</option>
+                        <option value="Bio-Química">Laboratorio Bio-Química</option>
+                    </select>
+                </div>
             </div>
             <nav id="menuNav"></nav>
             <button class="btn btn-primary" onclick="openPasswordModal()" style="width: calc(100% - 40px); margin: 10px 20px;">Cambiar Contraseña</button>
@@ -1191,6 +1197,7 @@
     <script>
         // Variables globales
         let currentUser = null;
+        let currentLaboratorio = 'STEM'; // Laboratorio actual
         let inventario = [];
         let solicitudes = [];
         let bitacora = [];
@@ -1200,6 +1207,9 @@
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
+            // Verificar si hay sesión guardada
+            checkSavedSession();
+
             // Configurar fecha de hoy como predeterminada
             const today = new Date().toISOString().split('T')[0];
             if (document.getElementById('bitacoraFecha')) {
@@ -1225,6 +1235,41 @@
             document.getElementById('passwordForm').addEventListener('submit', cambiarContrasena);
         });
 
+        // Verificar sesión guardada en localStorage
+        function checkSavedSession() {
+            const savedUser = localStorage.getItem('currentUser');
+            const savedLab = localStorage.getItem('currentLaboratorio');
+
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    currentLaboratorio = savedLab || currentUser.laboratorio || 'STEM';
+                    document.getElementById('loginView').style.display = 'none';
+                    document.getElementById('mainSystem').style.display = 'block';
+                    initializeSystem();
+                } catch (e) {
+                    // Si hay error al parsear, limpiar localStorage
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('currentLaboratorio');
+                }
+            }
+        }
+
+        // Guardar sesión en localStorage
+        function saveSession() {
+            if (currentUser) {
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                localStorage.setItem('currentLaboratorio', currentLaboratorio);
+            }
+        }
+
+        // Limpiar sesión
+        function clearSession() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('currentLaboratorio');
+            currentUser = null;
+        }
+
         // Autenticación
         function login() {
             const email = document.getElementById('loginEmail').value;
@@ -1241,6 +1286,9 @@
                     hideLoading();
                     if (result.success) {
                         currentUser = result.user;
+                        currentLaboratorio = currentUser.laboratorio || 'STEM';
+                        // Guardar sesión en localStorage
+                        saveSession();
                         document.getElementById('loginView').style.display = 'none';
                         document.getElementById('mainSystem').style.display = 'block';
                         initializeSystem();
@@ -1257,7 +1305,7 @@
         }
 
         function logout() {
-            currentUser = null;
+            clearSession(); // Limpiar localStorage
             document.getElementById('loginView').style.display = 'flex';
             document.getElementById('mainSystem').style.display = 'none';
             document.getElementById('loginEmail').value = '';
@@ -1268,9 +1316,20 @@
         // Inicializar sistema
         function initializeSystem() {
             document.getElementById('userInfo').textContent = currentUser.nombre + ' (' + currentUser.rol + ')';
+
+            // Mostrar selector de laboratorio solo para Admin
+            if (currentUser.rol === 'Admin') {
+                document.getElementById('labSelector').style.display = 'block';
+                document.getElementById('labSelect').value = currentLaboratorio;
+            } else {
+                document.getElementById('labSelector').style.display = 'none';
+                // Para preparadores y docentes, usar su laboratorio asignado
+                currentLaboratorio = currentUser.laboratorio || 'STEM';
+            }
+
             loadMenu();
             loadInventario();
-            if (currentUser.rol === 'Preparador') {
+            if (currentUser.rol === 'Preparador' || currentUser.rol === 'Admin') {
                 loadEstadisticas();
                 loadBitacora();
                 loadUsuarios();
@@ -1280,12 +1339,29 @@
             }
         }
 
+        // Cambiar laboratorio (solo para Admin)
+        function changeLaboratorio() {
+            const newLab = document.getElementById('labSelect').value;
+            if (newLab !== currentLaboratorio) {
+                currentLaboratorio = newLab;
+                saveSession(); // Guardar en localStorage
+                showNotification('Cambiado a ' + currentLaboratorio);
+                // Recargar datos del nuevo laboratorio
+                loadInventario();
+                if (currentUser.rol === 'Admin' || currentUser.rol === 'Preparador') {
+                    loadEstadisticas();
+                    loadBitacora();
+                    loadAllSolicitudes();
+                }
+            }
+        }
+
         // Cargar menú según rol
         function loadMenu() {
             const menuNav = document.getElementById('menuNav');
             let menuItems = [];
 
-            if (currentUser.rol === 'Preparador') {
+            if (currentUser.rol === 'Admin' || currentUser.rol === 'Preparador') {
                 menuItems = [
                     { id: 'inventario', text: 'Inventario', view: 'inventarioView' },
                     { id: 'bitacora', text: 'Bitácora', view: 'bitacoraView' },
@@ -1308,12 +1384,12 @@
 
             menuNav.innerHTML = html;
 
-            // Ocultar botón de agregar elemento para docentes y mostrar botones CSV para preparadores
-            if (currentUser.rol !== 'Preparador') {
+            // Ocultar botón de agregar elemento para docentes y mostrar botones CSV para preparadores/admin
+            if (currentUser.rol !== 'Preparador' && currentUser.rol !== 'Admin') {
                 const btnAgregar = document.getElementById('btnAgregarElemento');
                 if (btnAgregar) btnAgregar.style.display = 'none';
             } else {
-                // Mostrar botones de CSV para preparadores
+                // Mostrar botones de CSV para preparadores y admin
                 const csvButtons = document.getElementById('csvInventarioButtons');
                 if (csvButtons) csvButtons.style.display = 'flex';
             }
