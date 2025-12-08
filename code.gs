@@ -417,6 +417,148 @@ function deleteElemento(id) {
   }
 }
 
+/**
+ * Exporta el inventario a formato CSV
+ */
+function exportInventarioToCSV() {
+  try {
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEETS.INVENTARIO);
+
+    if (!sheet) {
+      return { success: false, error: 'Hoja de inventario no encontrada' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    let csv = '';
+
+    // Crear CSV
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i].map(cell => {
+        // Escapar comillas y comas
+        let value = String(cell);
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          value = '"' + value.replace(/"/g, '""') + '"';
+        }
+        return value;
+      });
+      csv += row.join(',') + '\n';
+    }
+
+    // Crear archivo temporal en Drive
+    const folder = getOrCreatePhotoFolder();
+    const fileName = 'Inventario_' + new Date().getTime() + '.csv';
+    const file = folder.createFile(fileName, csv, 'text/csv');
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    return {
+      success: true,
+      url: file.getUrl(),
+      downloadUrl: 'https://drive.google.com/uc?export=download&id=' + file.getId()
+    };
+  } catch (error) {
+    Logger.log('Error al exportar inventario: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Importa inventario desde CSV
+ */
+function importInventarioFromCSV(csvContent) {
+  try {
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.INVENTARIO);
+
+    if (!sheet) {
+      initializeSheets();
+      sheet = ss.getSheetByName(SHEETS.INVENTARIO);
+    }
+
+    // Parsear CSV
+    const lines = csvContent.split('\n');
+    let importCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 1; i < lines.length; i++) { // Saltar encabezado
+      if (!lines[i].trim()) continue;
+
+      try {
+        const values = parseCSVLine(lines[i]);
+        if (values.length >= 4) { // Mínimo: nombre, cantidad, estado, categoria
+          // Verificar si el elemento ya existe por nombre
+          const nombre = values[1] ? values[1].trim() : '';
+          if (!nombre) continue;
+
+          const data = sheet.getDataRange().getValues();
+          let exists = false;
+          let existingId = null;
+
+          for (let j = 1; j < data.length; j++) {
+            if (data[j][1] && data[j][1].toLowerCase() === nombre.toLowerCase()) {
+              exists = true;
+              existingId = data[j][0];
+              break;
+            }
+          }
+
+          const cantidad = parseInt(values[2]) || 0;
+          const estado = values[3] || 'Funcionamiento';
+          const categoria = values[4] || 'Otros';
+          const descripcion = values[5] || '';
+          const foto = values[6] || '';
+
+          if (exists && existingId) {
+            // Actualizar elemento existente
+            for (let j = 1; j < data.length; j++) {
+              if (data[j][0] === existingId) {
+                sheet.getRange(j + 1, 1, 1, 7).setValues([[
+                  existingId,
+                  nombre,
+                  cantidad,
+                  estado,
+                  categoria,
+                  descripcion,
+                  foto
+                ]]);
+                importCount++;
+                break;
+              }
+            }
+          } else {
+            // Crear nuevo elemento
+            const id = Utilities.getUuid();
+            sheet.appendRow([
+              id,
+              nombre,
+              cantidad,
+              estado,
+              categoria,
+              descripcion,
+              foto
+            ]);
+            importCount++;
+          }
+        }
+      } catch (lineError) {
+        errorCount++;
+        errors.push(`Línea ${i}: ${lineError.toString()}`);
+      }
+    }
+
+    return {
+      success: true,
+      importCount: importCount,
+      errorCount: errorCount,
+      errors: errors.slice(0, 5) // Solo primeros 5 errores
+    };
+  } catch (error) {
+    Logger.log('Error al importar inventario: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
 // ==================== BITÁCORA ====================
 
 /**
