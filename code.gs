@@ -296,7 +296,8 @@ function cambiarPassword(email, oldPassword, newPassword) {
       return { success: false, error: 'La nueva contraseña debe tener al menos 6 caracteres' };
     }
 
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    // Usuarios centralizados en spreadsheet STEM
+    const ss = SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEETS.USUARIOS);
     const data = sheet.getDataRange().getValues();
 
@@ -317,11 +318,15 @@ function cambiarPassword(email, oldPassword, newPassword) {
 // ==================== INVENTARIO ====================
 
 /**
- * Obtiene todos los elementos del inventario
+ * Obtiene todos los elementos del inventario de un laboratorio
  */
-function getInventario() {
+function getInventario(laboratorio) {
   try {
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return [];
+    }
+
     let sheet = ss.getSheetByName(SHEETS.INVENTARIO);
 
     if (!sheet) {
@@ -341,7 +346,8 @@ function getInventario() {
           estado: data[i][3],
           categoria: data[i][4],
           descripcion: data[i][5] || '',
-          foto: data[i][6] || ''
+          foto: data[i][6] || '',
+          laboratorio: laboratorio || LABORATORIOS.STEM
         });
       }
     }
@@ -354,9 +360,43 @@ function getInventario() {
 }
 
 /**
+ * Obtiene las categorías de un laboratorio
+ */
+function getCategorias(laboratorio) {
+  try {
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return [];
+    }
+
+    let sheet = ss.getSheetByName(SHEETS.CATEGORIAS);
+    if (!sheet) {
+      return [];
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const categorias = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        categorias.push({
+          id: data[i][0],
+          nombre: data[i][1]
+        });
+      }
+    }
+
+    return categorias;
+  } catch (error) {
+    Logger.log('Error al obtener categorías: ' + error);
+    return [];
+  }
+}
+
+/**
  * Guarda un elemento (nuevo o actualiza existente)
  */
-function saveElemento(elemento) {
+function saveElemento(elemento, laboratorio) {
   try {
     // Validar datos requeridos
     if (!elemento.nombre || elemento.nombre.trim() === '') {
@@ -372,7 +412,11 @@ function saveElemento(elemento) {
       return { success: false, error: 'La categoría es requerida' };
     }
 
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return { success: false, error: 'Laboratorio inválido' };
+    }
+
     let sheet = ss.getSheetByName(SHEETS.INVENTARIO);
 
     if (!sheet) {
