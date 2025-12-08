@@ -655,6 +655,77 @@
         .hidden {
             display: none !important;
         }
+
+        /* Estadísticas */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background-color: var(--blanco);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-left-width: 3px;
+        }
+
+        .stat-card.azul {
+            border-left-color: var(--azul-principal);
+        }
+
+        .stat-card.verde {
+            border-left-color: var(--verde-claro);
+        }
+
+        .stat-card.rojo {
+            border-left-color: var(--rojo-claro);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--azul-principal);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #666;
+        }
+
+        .alert-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background-color: var(--rojo-claro);
+            color: var(--blanco);
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        /* Filtros de búsqueda */
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .filter-row input, .filter-row select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            font-size: 13px;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .filter-row button {
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
@@ -689,6 +760,7 @@
                 <div class="user-info" id="userInfo"></div>
             </div>
             <nav id="menuNav"></nav>
+            <button class="btn btn-primary" onclick="openPasswordModal()" style="width: calc(100% - 40px); margin: 10px 20px;">Cambiar Contraseña</button>
             <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
         </div>
 
@@ -699,6 +771,10 @@
                 <div class="header">
                     <h1>Inventario del Laboratorio</h1>
                 </div>
+
+                <!-- Estadísticas (solo para Preparador) -->
+                <div id="statsContainer" class="stats-grid" style="display: none;"></div>
+
                 <div class="table-container">
                     <div class="search-bar">
                         <input type="text" id="searchInventario" placeholder="Buscar por nombre...">
@@ -732,6 +808,16 @@
                         <button class="btn btn-primary" onclick="document.getElementById('importCSV').click()">⬆ Importar CSV</button>
                         <input type="file" id="importCSV" accept=".csv" style="display: none;" onchange="importBitacora(event)">
                     </div>
+
+                    <!-- Filtros de búsqueda -->
+                    <div class="filter-row">
+                        <input type="text" id="searchBitacora" placeholder="Buscar en bitácora...">
+                        <input type="date" id="filterFechaInicio" placeholder="Desde">
+                        <input type="date" id="filterFechaFin" placeholder="Hasta">
+                        <button class="btn btn-primary" onclick="filtrarBitacora()">Buscar</button>
+                        <button class="btn close-modal" onclick="limpiarFiltrosBitacora()">Limpiar</button>
+                    </div>
+
                     <div id="bitacoraList"></div>
                 </div>
             </div>
@@ -951,13 +1037,42 @@
         </div>
     </div>
 
+    <!-- Modal: Cambiar Contraseña -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Cambiar Contraseña</h2>
+            </div>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label>Contraseña Actual *</label>
+                    <input type="password" id="currentPassword" required>
+                </div>
+                <div class="form-group">
+                    <label>Nueva Contraseña *</label>
+                    <input type="password" id="newPassword" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label>Confirmar Nueva Contraseña *</label>
+                    <input type="password" id="confirmPassword" minlength="6" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn close-modal" onclick="closePasswordModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Variables globales
         let currentUser = null;
         let inventario = [];
         let solicitudes = [];
         let bitacora = [];
+        let bitacoraCompleta = [];
         let usuarios = [];
+        let estadisticas = null;
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
@@ -983,6 +1098,7 @@
             document.getElementById('solicitudForm').addEventListener('submit', saveSolicitud);
             document.getElementById('prepararForm').addEventListener('submit', marcarPreparada);
             document.getElementById('usuarioForm').addEventListener('submit', saveUsuario);
+            document.getElementById('passwordForm').addEventListener('submit', cambiarContrasena);
         });
 
         // Autenticación
@@ -1031,6 +1147,7 @@
             loadMenu();
             loadInventario();
             if (currentUser.rol === 'Preparador') {
+                loadEstadisticas();
                 loadBitacora();
                 loadUsuarios();
                 loadAllSolicitudes();
@@ -1833,6 +1950,157 @@
 
         function viewImage(url) {
             window.open(url, '_blank');
+        }
+
+        // ==================== ESTADÍSTICAS ====================
+
+        function loadEstadisticas() {
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(stats) {
+                    hideLoading();
+                    if (stats) {
+                        estadisticas = stats;
+                        displayEstadisticas(stats);
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    console.error('Error al cargar estadísticas:', error);
+                })
+                .getEstadisticasInventario();
+        }
+
+        function displayEstadisticas(stats) {
+            const container = document.getElementById('statsContainer');
+            if (!container) return;
+
+            let html = `
+                <div class="stat-card azul">
+                    <div class="stat-value">${stats.totalElementos}</div>
+                    <div class="stat-label">Total Elementos</div>
+                </div>
+                <div class="stat-card verde">
+                    <div class="stat-value">${stats.enFuncionamiento}</div>
+                    <div class="stat-label">En Funcionamiento</div>
+                </div>
+                <div class="stat-card rojo">
+                    <div class="stat-value">${stats.enReparacion}</div>
+                    <div class="stat-label">En Reparación</div>
+                </div>
+                <div class="stat-card azul">
+                    <div class="stat-value">${stats.totalCantidad}</div>
+                    <div class="stat-label">Total Unidades</div>
+                </div>
+            `;
+
+            if (stats.alertas.length > 0) {
+                html += `
+                    <div class="stat-card rojo">
+                        <div class="stat-value">${stats.alertas.length}</div>
+                        <div class="stat-label">Alertas<span class="alert-badge" title="${stats.alertas.map(a => a.mensaje).join(', ')}">Ver</span></div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+            container.style.display = 'grid';
+        }
+
+        // ==================== BÚSQUEDA BITÁCORA ====================
+
+        function filtrarBitacora() {
+            const texto = document.getElementById('searchBitacora').value;
+            const fechaInicio = document.getElementById('filterFechaInicio').value;
+            const fechaFin = document.getElementById('filterFechaFin').value;
+
+            if (!texto && !fechaInicio && !fechaFin) {
+                displayBitacora(bitacoraCompleta);
+                return;
+            }
+
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(resultados) {
+                    hideLoading();
+                    displayBitacora(resultados);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error al buscar: ' + error.message, 'error');
+                })
+                .buscarBitacora({ texto, fechaInicio, fechaFin });
+        }
+
+        function limpiarFiltrosBitacora() {
+            document.getElementById('searchBitacora').value = '';
+            document.getElementById('filterFechaInicio').value = '';
+            document.getElementById('filterFechaFin').value = '';
+            displayBitacora(bitacoraCompleta);
+        }
+
+        // Actualizar loadBitacora para guardar una copia completa
+        const originalLoadBitacora = loadBitacora;
+        function loadBitacora() {
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(data) {
+                    hideLoading();
+                    bitacora = data;
+                    bitacoraCompleta = data; // Guardar copia completa para filtros
+                    displayBitacora(data);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error al cargar bitácora: ' + error.message, 'error');
+                })
+                .getBitacora();
+        }
+
+        // ==================== CAMBIAR CONTRASEÑA ====================
+
+        function openPasswordModal() {
+            document.getElementById('passwordModal').classList.add('active');
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.remove('active');
+            document.getElementById('passwordForm').reset();
+        }
+
+        function cambiarContrasena(event) {
+            event.preventDefault();
+
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                showNotification('Las contraseñas no coinciden', 'error');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showNotification('La nueva contraseña debe tener al menos 6 caracteres', 'error');
+                return;
+            }
+
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification(result.message || 'Contraseña actualizada correctamente');
+                        closePasswordModal();
+                    } else {
+                        showNotification(result.error || 'Error al cambiar contraseña', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .cambiarPassword(currentUser.email, currentPassword, newPassword);
         }
     </script>
 </body>
