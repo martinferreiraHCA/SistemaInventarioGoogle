@@ -136,6 +136,17 @@ function uploadImage(base64Data, fileName) {
  */
 function loginUser(email, password) {
   try {
+    // Validar entrada
+    if (!email || !password) {
+      return { success: false, message: 'Email y contraseña son requeridos' };
+    }
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return { success: false, message: 'Formato de email inválido' };
+    }
+
     const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.USUARIOS);
 
@@ -145,6 +156,11 @@ function loginUser(email, password) {
     }
 
     const data = sheet.getDataRange().getValues();
+
+    // Verificar si hay datos
+    if (data.length <= 1) {
+      return { success: false, message: 'No hay usuarios registrados. Ejecute initializeSheets()' };
+    }
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][2] === email && data[i][3] === password) {
@@ -164,6 +180,34 @@ function loginUser(email, password) {
   } catch (error) {
     Logger.log('Error en login: ' + error);
     return { success: false, message: 'Error al iniciar sesión: ' + error.toString() };
+  }
+}
+
+/**
+ * Cambia la contraseña de un usuario
+ */
+function cambiarPassword(email, oldPassword, newPassword) {
+  try {
+    // Validar contraseña nueva
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'La nueva contraseña debe tener al menos 6 caracteres' };
+    }
+
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEETS.USUARIOS);
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][2] === email && data[i][3] === oldPassword) {
+        sheet.getRange(i + 1, 4).setValue(newPassword);
+        return { success: true, message: 'Contraseña actualizada correctamente' };
+      }
+    }
+
+    return { success: false, error: 'Contraseña actual incorrecta' };
+  } catch (error) {
+    Logger.log('Error al cambiar contraseña: ' + error);
+    return { success: false, error: error.toString() };
   }
 }
 
@@ -211,6 +255,20 @@ function getInventario() {
  */
 function saveElemento(elemento) {
   try {
+    // Validar datos requeridos
+    if (!elemento.nombre || elemento.nombre.trim() === '') {
+      return { success: false, error: 'El nombre es requerido' };
+    }
+    if (elemento.cantidad === undefined || elemento.cantidad === null || elemento.cantidad < 0) {
+      return { success: false, error: 'La cantidad debe ser mayor o igual a 0' };
+    }
+    if (!elemento.estado) {
+      return { success: false, error: 'El estado es requerido' };
+    }
+    if (!elemento.categoria) {
+      return { success: false, error: 'La categoría es requerida' };
+    }
+
     const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.INVENTARIO);
 
@@ -237,11 +295,11 @@ function saveElemento(elemento) {
         if (data[i][0] === elemento.id) {
           sheet.getRange(i + 1, 1, 1, 7).setValues([[
             elemento.id,
-            elemento.nombre,
-            elemento.cantidad,
+            elemento.nombre.trim(),
+            parseInt(elemento.cantidad),
             elemento.estado,
             elemento.categoria,
-            elemento.descripcion,
+            elemento.descripcion || '',
             fotoURL
           ]]);
           return { success: true };
@@ -253,11 +311,11 @@ function saveElemento(elemento) {
     const id = Utilities.getUuid();
     sheet.appendRow([
       id,
-      elemento.nombre,
-      elemento.cantidad,
+      elemento.nombre.trim(),
+      parseInt(elemento.cantidad),
       elemento.estado,
       elemento.categoria,
-      elemento.descripcion,
+      elemento.descripcion || '',
       fotoURL
     ]);
 
@@ -265,6 +323,74 @@ function saveElemento(elemento) {
   } catch (error) {
     Logger.log('Error al guardar elemento: ' + error);
     return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Obtiene estadísticas del inventario
+ */
+function getEstadisticasInventario() {
+  try {
+    const elementos = getInventario();
+
+    const stats = {
+      totalElementos: elementos.length,
+      totalCantidad: 0,
+      enFuncionamiento: 0,
+      enReparacion: 0,
+      stockBajo: [],
+      porCategoria: {},
+      alertas: []
+    };
+
+    elementos.forEach(elemento => {
+      stats.totalCantidad += parseInt(elemento.cantidad) || 0;
+
+      if (elemento.estado === 'Funcionamiento') {
+        stats.enFuncionamiento++;
+      } else if (elemento.estado === 'Reparación') {
+        stats.enReparacion++;
+      }
+
+      // Contar por categoría
+      if (!stats.porCategoria[elemento.categoria]) {
+        stats.porCategoria[elemento.categoria] = { cantidad: 0, items: 0 };
+      }
+      stats.porCategoria[elemento.categoria].cantidad += parseInt(elemento.cantidad) || 0;
+      stats.porCategoria[elemento.categoria].items++;
+
+      // Stock bajo (menos de 5 unidades)
+      if (parseInt(elemento.cantidad) < 5 && parseInt(elemento.cantidad) > 0) {
+        stats.stockBajo.push({
+          nombre: elemento.nombre,
+          cantidad: elemento.cantidad,
+          categoria: elemento.categoria
+        });
+      }
+
+      // Sin stock
+      if (parseInt(elemento.cantidad) === 0) {
+        stats.alertas.push({
+          tipo: 'sin_stock',
+          mensaje: `${elemento.nombre} no tiene unidades disponibles`,
+          elemento: elemento.nombre
+        });
+      }
+
+      // Items en reparación
+      if (elemento.estado === 'Reparación') {
+        stats.alertas.push({
+          tipo: 'reparacion',
+          mensaje: `${elemento.nombre} está en reparación`,
+          elemento: elemento.nombre
+        });
+      }
+    });
+
+    return stats;
+  } catch (error) {
+    Logger.log('Error al obtener estadísticas: ' + error);
+    return null;
   }
 }
 
@@ -329,6 +455,56 @@ function getBitacora() {
     return entradas;
   } catch (error) {
     Logger.log('Error al obtener bitácora: ' + error);
+    return [];
+  }
+}
+
+/**
+ * Busca en la bitácora por rango de fechas o texto
+ */
+function buscarBitacora(filtros) {
+  try {
+    let entradas = getBitacora();
+
+    // Filtrar por fecha de inicio
+    if (filtros.fechaInicio) {
+      entradas = entradas.filter(e => {
+        const fecha = new Date(e.fecha);
+        const inicio = new Date(filtros.fechaInicio);
+        return fecha >= inicio;
+      });
+    }
+
+    // Filtrar por fecha de fin
+    if (filtros.fechaFin) {
+      entradas = entradas.filter(e => {
+        const fecha = new Date(e.fecha);
+        const fin = new Date(filtros.fechaFin);
+        return fecha <= fin;
+      });
+    }
+
+    // Filtrar por texto en práctica, items o usuario
+    if (filtros.texto) {
+      const texto = filtros.texto.toLowerCase();
+      entradas = entradas.filter(e =>
+        e.practica.toLowerCase().includes(texto) ||
+        e.items.toLowerCase().includes(texto) ||
+        e.usuario.toLowerCase().includes(texto) ||
+        (e.observaciones && e.observaciones.toLowerCase().includes(texto))
+      );
+    }
+
+    // Filtrar por preparador
+    if (filtros.preparador) {
+      entradas = entradas.filter(e =>
+        e.preparador && e.preparador.toLowerCase().includes(filtros.preparador.toLowerCase())
+      );
+    }
+
+    return entradas;
+  } catch (error) {
+    Logger.log('Error al buscar en bitácora: ' + error);
     return [];
   }
 }
@@ -624,6 +800,24 @@ function getSolicitudesByDocente(email) {
  */
 function saveSolicitud(solicitud) {
   try {
+    // Validar datos requeridos
+    if (!solicitud.nombre || solicitud.nombre.trim() === '') {
+      return { success: false, error: 'El nombre de la práctica es requerido' };
+    }
+    if (!solicitud.fechaInicio || !solicitud.fechaFin || !solicitud.fechaNecesaria) {
+      return { success: false, error: 'Todas las fechas son requeridas' };
+    }
+    if (!solicitud.materiales && !solicitud.materialesExtra) {
+      return { success: false, error: 'Debe especificar al menos un material' };
+    }
+
+    // Validar que fechaInicio sea anterior a fechaFin
+    const inicio = new Date(solicitud.fechaInicio);
+    const fin = new Date(solicitud.fechaFin);
+    if (inicio > fin) {
+      return { success: false, error: 'La fecha de inicio debe ser anterior a la fecha de fin' };
+    }
+
     const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
 
@@ -635,11 +829,11 @@ function saveSolicitud(solicitud) {
     const id = Utilities.getUuid();
     sheet.appendRow([
       id,
-      solicitud.nombre,
+      solicitud.nombre.trim(),
       solicitud.fechaInicio,
       solicitud.fechaFin,
       solicitud.fechaNecesaria,
-      solicitud.materiales,
+      solicitud.materiales || '',
       solicitud.materialesExtra || '',
       solicitud.docente,
       solicitud.docenteEmail,
@@ -648,10 +842,33 @@ function saveSolicitud(solicitud) {
       ''
     ]);
 
+    // Notificar a los preparadores
+    notificarNuevaSolicitud(solicitud);
+
     return { success: true };
   } catch (error) {
     Logger.log('Error al guardar solicitud: ' + error);
     return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Notifica a los preparadores sobre una nueva solicitud
+ */
+function notificarNuevaSolicitud(solicitud) {
+  try {
+    const usuarios = getUsuarios();
+    const preparadores = usuarios.filter(u => u.rol === 'Preparador');
+
+    preparadores.forEach(preparador => {
+      sendNotification(
+        preparador.email,
+        'Nueva Solicitud de Material',
+        `El docente ${solicitud.docente} ha solicitado materiales para la práctica "${solicitud.nombre}".\n\nFecha necesaria: ${solicitud.fechaNecesaria}`
+      );
+    });
+  } catch (error) {
+    Logger.log('Error al notificar nueva solicitud: ' + error);
   }
 }
 
@@ -751,6 +968,26 @@ function getUsuarios() {
  */
 function saveUsuario(usuario) {
   try {
+    // Validar datos requeridos
+    if (!usuario.nombre || usuario.nombre.trim() === '') {
+      return { success: false, error: 'El nombre es requerido' };
+    }
+    if (!usuario.email || usuario.email.trim() === '') {
+      return { success: false, error: 'El email es requerido' };
+    }
+    if (!usuario.password || usuario.password.length < 6) {
+      return { success: false, error: 'La contraseña debe tener al menos 6 caracteres' };
+    }
+    if (!usuario.rol || (usuario.rol !== 'Preparador' && usuario.rol !== 'Docente')) {
+      return { success: false, error: 'El rol debe ser Preparador o Docente' };
+    }
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(usuario.email)) {
+      return { success: false, error: 'Formato de email inválido' };
+    }
+
     const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.USUARIOS);
 
@@ -763,7 +1000,7 @@ function saveUsuario(usuario) {
 
     // Verificar si el email ya existe (excepto si es el mismo usuario)
     for (let i = 1; i < data.length; i++) {
-      if (data[i][2] === usuario.email && data[i][0] !== usuario.id) {
+      if (data[i][2] === usuario.email.trim() && data[i][0] !== usuario.id) {
         return { success: false, error: 'El email ya está registrado' };
       }
     }
@@ -774,8 +1011,8 @@ function saveUsuario(usuario) {
         if (data[i][0] === usuario.id) {
           sheet.getRange(i + 1, 1, 1, 5).setValues([[
             usuario.id,
-            usuario.nombre,
-            usuario.email,
+            usuario.nombre.trim(),
+            usuario.email.trim(),
             usuario.password,
             usuario.rol
           ]]);
@@ -788,8 +1025,8 @@ function saveUsuario(usuario) {
     const id = Utilities.getUuid();
     sheet.appendRow([
       id,
-      usuario.nombre,
-      usuario.email,
+      usuario.nombre.trim(),
+      usuario.email.trim(),
       usuario.password,
       usuario.rol
     ]);
