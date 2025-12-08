@@ -30,7 +30,7 @@ Sistema completo de gestión de laboratorio con inventario, bitácora, solicitud
 
 ### 1. Configurar Google Sheets
 
-1. Abre la hoja de cálculo: [Sistema Inventario Laboratorio](https://docs.google.com/spreadsheets/d/1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE/edit)
+1. Abre la hoja de cálculo: [Sistema Inventario Laboratorio](https://docs.google.com/spreadsheets/d/19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A/edit)
 2. Haz una copia de la hoja: **Archivo → Hacer una copia**
 3. Anota el ID de tu nueva hoja (está en la URL después de `/d/` y antes de `/edit`)
 
@@ -104,13 +104,19 @@ El sistema viene con dos usuarios predefinidos para que puedas probar:
 
 #### Bitácora
 1. Selecciona **Bitácora** en el menú lateral
-2. Haz clic en **+ Nueva Entrada**
-3. Registra:
-   - Fecha de la actividad
-   - Práctica preparada
-   - Items utilizados
-   - Usuario destinatario
-   - Observaciones
+2. **Crear nueva entrada**:
+   - Haz clic en **+ Nueva Entrada**
+   - Registra:
+     - Fecha de la actividad
+     - Práctica preparada
+     - Items utilizados
+     - Usuario destinatario
+     - Observaciones
+3. **Editar entradas**: Haz clic en el botón "Editar" en cualquier entrada
+4. **Eliminar entradas**: Haz clic en el botón "Eliminar"
+5. **Exportar a CSV**: Haz clic en **⬇ Exportar CSV** para descargar toda la bitácora
+6. **Importar desde CSV**: Haz clic en **⬆ Importar CSV** para cargar entradas desde un archivo CSV
+7. **Entradas automáticas**: Cuando marcas una solicitud como preparada, se crea automáticamente una entrada en la bitácora
 
 #### Gestión de Solicitudes
 1. Selecciona **Solicitudes** en el menú lateral

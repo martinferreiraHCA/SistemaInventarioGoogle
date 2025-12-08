@@ -2,10 +2,10 @@
  * Sistema de Gestión de Laboratorio
  * Backend en Google Apps Script
  *
- * Spreadsheet: https://docs.google.com/spreadsheets/d/1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE/edit
+ * Spreadsheet: https://docs.google.com/spreadsheets/d/19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A/edit
  */
 
-const SPREADSHEET_ID = '1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE';
+const SPREADSHEET_ID = '19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A';
 
 // Nombres de las hojas
 const SHEETS = {
@@ -340,7 +340,29 @@ function saveBitacora(entry) {
       sheet = ss.getSheetByName(SHEETS.BITACORA);
     }
 
-    const id = Utilities.getUuid();
+    const id = entry.id || Utilities.getUuid();
+
+    // Si tiene ID, verificar si es actualización
+    if (entry.id) {
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === entry.id) {
+          // Actualizar entrada existente
+          sheet.getRange(i + 1, 1, 1, 7).setValues([[
+            id,
+            entry.fecha,
+            entry.practica,
+            entry.items,
+            entry.usuario,
+            entry.observaciones || '',
+            entry.preparador || ''
+          ]]);
+          return { success: true };
+        }
+      }
+    }
+
+    // Nueva entrada
     sheet.appendRow([
       id,
       entry.fecha,
@@ -356,6 +378,182 @@ function saveBitacora(entry) {
     Logger.log('Error al guardar bitácora: ' + error);
     return { success: false, error: error.toString() };
   }
+}
+
+/**
+ * Agrega entrada automática cuando se completa una solicitud
+ */
+function addBitacoraFromSolicitud(solicitud, preparador) {
+  try {
+    const entry = {
+      fecha: new Date().toISOString().split('T')[0],
+      practica: 'Solicitud preparada: ' + solicitud.nombre,
+      items: solicitud.materiales,
+      usuario: solicitud.docente,
+      observaciones: 'Solicitud completada automáticamente',
+      preparador: preparador
+    };
+
+    return saveBitacora(entry);
+  } catch (error) {
+    Logger.log('Error al agregar entrada automática de bitácora: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Elimina una entrada de bitácora
+ */
+function deleteBitacora(id) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEETS.BITACORA);
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === id) {
+        sheet.deleteRow(i + 1);
+        return { success: true };
+      }
+    }
+
+    return { success: false, error: 'Entrada no encontrada' };
+  } catch (error) {
+    Logger.log('Error al eliminar bitácora: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Exporta la bitácora a formato CSV
+ */
+function exportBitacoraToCSV() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEETS.BITACORA);
+
+    if (!sheet) {
+      return { success: false, error: 'Hoja de bitácora no encontrada' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    let csv = '';
+
+    // Crear CSV
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i].map(cell => {
+        // Escapar comillas y comas
+        let value = String(cell);
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          value = '"' + value.replace(/"/g, '""') + '"';
+        }
+        return value;
+      });
+      csv += row.join(',') + '\n';
+    }
+
+    // Crear archivo temporal en Drive
+    const folder = getOrCreatePhotoFolder();
+    const fileName = 'Bitacora_' + new Date().getTime() + '.csv';
+    const file = folder.createFile(fileName, csv, 'text/csv');
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    return {
+      success: true,
+      url: file.getUrl(),
+      downloadUrl: 'https://drive.google.com/uc?export=download&id=' + file.getId()
+    };
+  } catch (error) {
+    Logger.log('Error al exportar bitácora: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Importa bitácora desde CSV
+ */
+function importBitacoraFromCSV(csvContent) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.BITACORA);
+
+    if (!sheet) {
+      initializeSheets();
+      sheet = ss.getSheetByName(SHEETS.BITACORA);
+    }
+
+    // Parsear CSV
+    const lines = csvContent.split('\n');
+    let importCount = 0;
+
+    for (let i = 1; i < lines.length; i++) { // Saltar encabezado
+      if (!lines[i].trim()) continue;
+
+      const values = parseCSVLine(lines[i]);
+      if (values.length >= 7) {
+        // Verificar si el ID ya existe
+        const id = values[0] || Utilities.getUuid();
+        const data = sheet.getDataRange().getValues();
+        let exists = false;
+
+        for (let j = 1; j < data.length; j++) {
+          if (data[j][0] === id) {
+            exists = true;
+            break;
+          }
+        }
+
+        if (!exists) {
+          sheet.appendRow([
+            id,
+            values[1], // fecha
+            values[2], // practica
+            values[3], // items
+            values[4], // usuario
+            values[5], // observaciones
+            values[6]  // preparador
+          ]);
+          importCount++;
+        }
+      }
+    }
+
+    return { success: true, importCount: importCount };
+  } catch (error) {
+    Logger.log('Error al importar bitácora: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Parsea una línea CSV respetando comillas
+ */
+function parseCSVLine(line) {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"';
+        i++; // Saltar siguiente comilla
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      values.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  values.push(current); // Último valor
+  return values;
 }
 
 // ==================== SOLICITUDES ====================
@@ -474,6 +672,16 @@ function marcarSolicitudPreparada(data) {
       if (sheetData[i][0] === data.id) {
         // Actualizar estado, foto y observaciones
         sheet.getRange(i + 1, 10, 1, 3).setValues([['Preparada', fotoURL, data.observaciones || '']]);
+
+        // Crear objeto solicitud para bitácora
+        const solicitud = {
+          nombre: sheetData[i][1],
+          materiales: sheetData[i][5],
+          docente: sheetData[i][7]
+        };
+
+        // Agregar entrada automática en bitácora
+        addBitacoraFromSolicitud(solicitud, data.preparador || 'Preparador');
 
         // Enviar notificación al docente
         const docenteEmail = sheetData[i][8];

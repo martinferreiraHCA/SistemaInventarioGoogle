@@ -642,7 +642,12 @@
                     <h1>Bitácora del Laboratorio</h1>
                 </div>
                 <div class="table-container">
-                    <button class="btn btn-success" onclick="openAddBitacoraModal()" style="margin-bottom: 20px;">+ Nueva Entrada</button>
+                    <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-success" onclick="openAddBitacoraModal()">+ Nueva Entrada</button>
+                        <button class="btn btn-primary" onclick="exportBitacora()">⬇ Exportar CSV</button>
+                        <button class="btn btn-primary" onclick="document.getElementById('importCSV').click()">⬆ Importar CSV</button>
+                        <input type="file" id="importCSV" accept=".csv" style="display: none;" onchange="importBitacora(event)">
+                    </div>
                     <div id="bitacoraList"></div>
                 </div>
             </div>
@@ -733,6 +738,7 @@
                 <h2>Nueva Entrada en Bitácora</h2>
             </div>
             <form id="bitacoraForm">
+                <input type="hidden" id="bitacoraId">
                 <div class="form-group">
                     <label>Fecha *</label>
                     <input type="date" id="bitacoraFecha" required>
@@ -1217,11 +1223,16 @@
 
             let html = '';
             entries.forEach(entry => {
-                html += `<div class="bitacora-entry">
+                html += `<div class="bitacora-entry" style="position: relative;">
                     <div class="bitacora-date">${entry.fecha} - ${entry.practica}</div>
                     <div><strong>Items:</strong> ${entry.items}</div>
                     <div><strong>Usuario:</strong> ${entry.usuario}</div>
                     ${entry.observaciones ? `<div><strong>Observaciones:</strong> ${entry.observaciones}</div>` : ''}
+                    ${entry.preparador ? `<div><strong>Preparador:</strong> ${entry.preparador}</div>` : ''}
+                    <div style="margin-top: 10px; display: flex; gap: 8px;">
+                        <button class="action-btn edit" onclick='editBitacoraEntry(${JSON.stringify(entry)})'>Editar</button>
+                        <button class="action-btn delete" onclick="deleteBitacoraEntry('${entry.id}')">Eliminar</button>
+                    </div>
                 </div>`;
             });
 
@@ -1230,6 +1241,7 @@
 
         function openAddBitacoraModal() {
             document.getElementById('bitacoraForm').reset();
+            document.getElementById('bitacoraId').value = ''; // Limpiar ID para nueva entrada
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('bitacoraFecha').value = today;
             document.getElementById('bitacoraModal').classList.add('active');
@@ -1243,6 +1255,7 @@
             event.preventDefault();
 
             const entry = {
+                id: document.getElementById('bitacoraId').value || undefined,
                 fecha: document.getElementById('bitacoraFecha').value,
                 practica: document.getElementById('bitacoraPractica').value,
                 items: document.getElementById('bitacoraItems').value,
@@ -1268,6 +1281,88 @@
                     showNotification('Error: ' + error.message, 'error');
                 })
                 .saveBitacora(entry);
+        }
+
+        function editBitacoraEntry(entry) {
+            document.getElementById('bitacoraId').value = entry.id;
+            document.getElementById('bitacoraFecha').value = entry.fecha;
+            document.getElementById('bitacoraPractica').value = entry.practica;
+            document.getElementById('bitacoraItems').value = entry.items;
+            document.getElementById('bitacoraUsuario').value = entry.usuario;
+            document.getElementById('bitacoraObservaciones').value = entry.observaciones || '';
+            document.getElementById('bitacoraModal').classList.add('active');
+        }
+
+        function deleteBitacoraEntry(id) {
+            if (!confirm('¿Está seguro de eliminar esta entrada de bitácora?')) return;
+
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification('Entrada eliminada correctamente');
+                        loadBitacora();
+                    } else {
+                        showNotification('Error al eliminar entrada', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .deleteBitacora(id);
+        }
+
+        function exportBitacora() {
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        // Abrir enlace de descarga en nueva ventana
+                        window.open(result.downloadUrl, '_blank');
+                        showNotification('Bitácora exportada correctamente');
+                    } else {
+                        showNotification('Error al exportar bitácora: ' + result.error, 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .exportBitacoraToCSV();
+        }
+
+        function importBitacora(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csvContent = e.target.result;
+
+                showLoading();
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        hideLoading();
+                        if (result.success) {
+                            showNotification(`${result.importCount} entradas importadas correctamente`);
+                            loadBitacora();
+                            // Limpiar el input file
+                            document.getElementById('importCSV').value = '';
+                        } else {
+                            showNotification('Error al importar: ' + result.error, 'error');
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        hideLoading();
+                        showNotification('Error: ' + error.message, 'error');
+                    })
+                    .importBitacoraFromCSV(csvContent);
+            };
+
+            reader.readAsText(file);
         }
 
         // Solicitudes
@@ -1476,7 +1571,8 @@
 
             const data = {
                 id: id,
-                observaciones: observaciones
+                observaciones: observaciones,
+                preparador: currentUser.nombre
             };
 
             if (foto) {
