@@ -1,22 +1,41 @@
 /**
- * Sistema de Gestión de Laboratorio
+ * Sistema de Gestión de Laboratorio Multi-Laboratorio
  * Backend en Google Apps Script
  *
  * Bitácora: https://docs.google.com/spreadsheets/d/19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A/edit
- * Inventario: https://docs.google.com/spreadsheets/d/1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE/edit
+ * Inventario STEM: https://docs.google.com/spreadsheets/d/1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE/edit
+ * Inventario Bio-Química: https://docs.google.com/spreadsheets/d/1ZUdapKn4Bk9xhMqbYehaawhl0zWTPYbi5rIffTrKbQw/edit
  */
 
 // IDs de los Spreadsheets
 const BITACORA_SPREADSHEET_ID = '19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A';
-const INVENTARIO_SPREADSHEET_ID = '1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE';
+const INVENTARIO_STEM_SPREADSHEET_ID = '1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE';
+const INVENTARIO_BIOQUIMICA_SPREADSHEET_ID = '1ZUdapKn4Bk9xhMqbYehaawhl0zWTPYbi5rIffTrKbQw';
+
+// Laboratorios disponibles
+const LABORATORIOS = {
+  STEM: 'STEM',
+  BIOQUIMICA: 'Bio-Química'
+};
 
 // Nombres de las hojas
 const SHEETS = {
   INVENTARIO: 'Inventario',
   USUARIOS: 'Usuarios',
   SOLICITUDES: 'Solicitudes',
-  BITACORA: 'Bitacora'
+  BITACORA: 'Bitacora',
+  CATEGORIAS: 'Categorias'
 };
+
+// Función helper para obtener el spreadsheet según el laboratorio
+function getSpreadsheetByLab(laboratorio) {
+  if (laboratorio === LABORATORIOS.STEM) {
+    return SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
+  } else if (laboratorio === LABORATORIOS.BIOQUIMICA) {
+    return SpreadsheetApp.openById(INVENTARIO_BIOQUIMICA_SPREADSHEET_ID);
+  }
+  return null;
+}
 
 /**
  * Sirve la página web
@@ -29,16 +48,31 @@ function doGet(e) {
 }
 
 /**
- * Inicializa las hojas si no existen
+ * Inicializa las hojas en ambos laboratorios si no existen
  */
 function initializeSheets() {
-  // Inicializar Inventario, Usuarios y Solicitudes
-  const inventarioSS = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+  // Inicializar LABORATORIO STEM
+  initializeLaboratorioSheets(INVENTARIO_STEM_SPREADSHEET_ID, LABORATORIOS.STEM);
+
+  // Inicializar LABORATORIO BIO-QUÍMICA
+  initializeLaboratorioSheets(INVENTARIO_BIOQUIMICA_SPREADSHEET_ID, LABORATORIOS.BIOQUIMICA);
+
+  // Inicializar Bitácora (compartida entre laboratorios)
+  initializeBitacoraSheet();
+
+  return { success: true, message: 'Hojas inicializadas correctamente en ambos laboratorios' };
+}
+
+/**
+ * Inicializa las hojas de un laboratorio específico
+ */
+function initializeLaboratorioSheets(spreadsheetId, nombreLaboratorio) {
+  const ss = SpreadsheetApp.openById(spreadsheetId);
 
   // Inventario
-  let inventarioSheet = inventarioSS.getSheetByName(SHEETS.INVENTARIO);
+  let inventarioSheet = ss.getSheetByName(SHEETS.INVENTARIO);
   if (!inventarioSheet) {
-    inventarioSheet = inventarioSS.insertSheet(SHEETS.INVENTARIO);
+    inventarioSheet = ss.insertSheet(SHEETS.INVENTARIO);
     inventarioSheet.getRange(1, 1, 1, 7).setValues([[
       'ID', 'Nombre', 'Cantidad', 'Estado', 'Categoria', 'Descripcion', 'Foto'
     ]]);
@@ -46,49 +80,116 @@ function initializeSheets() {
     inventarioSheet.setFrozenRows(1);
   }
 
-  // Usuarios
-  let usuariosSheet = inventarioSS.getSheetByName(SHEETS.USUARIOS);
-  if (!usuariosSheet) {
-    usuariosSheet = inventarioSS.insertSheet(SHEETS.USUARIOS);
-    usuariosSheet.getRange(1, 1, 1, 5).setValues([[
-      'ID', 'Nombre', 'Email', 'Password', 'Rol'
-    ]]);
-    usuariosSheet.getRange(1, 1, 1, 5).setFontWeight('bold');
-    usuariosSheet.setFrozenRows(1);
+  // Usuarios (solo en spreadsheet STEM - centralizado)
+  if (nombreLaboratorio === LABORATORIOS.STEM) {
+    let usuariosSheet = ss.getSheetByName(SHEETS.USUARIOS);
+    if (!usuariosSheet) {
+      usuariosSheet = ss.insertSheet(SHEETS.USUARIOS);
+      usuariosSheet.getRange(1, 1, 1, 6).setValues([[
+        'ID', 'Nombre', 'Email', 'Password', 'Rol', 'Laboratorio'
+      ]]);
+      usuariosSheet.getRange(1, 1, 1, 6).setFontWeight('bold');
+      usuariosSheet.setFrozenRows(1);
 
-    // Agregar usuarios de ejemplo
-    const adminId = Utilities.getUuid();
-    const docenteId = Utilities.getUuid();
-    usuariosSheet.appendRow([adminId, 'Preparador Admin', 'admin@laboratorio.com', 'admin123', 'Preparador']);
-    usuariosSheet.appendRow([docenteId, 'Docente Ejemplo', 'docente@laboratorio.com', 'docente123', 'Docente']);
+      // Agregar usuarios de ejemplo
+      const adminId = Utilities.getUuid();
+      const preparadorSTEMId = Utilities.getUuid();
+      const preparadorBioId = Utilities.getUuid();
+      const docenteSTEMId = Utilities.getUuid();
+      const docenteBioId = Utilities.getUuid();
+
+      usuariosSheet.appendRow([adminId, 'Administrador Sistema', 'admin@laboratorio.com', 'admin123', 'Admin', 'STEM']);
+      usuariosSheet.appendRow([preparadorSTEMId, 'Preparador STEM', 'preparador.stem@laboratorio.com', 'stem123', 'Preparador', 'STEM']);
+      usuariosSheet.appendRow([preparadorBioId, 'Preparador Bio-Química', 'preparador.bio@laboratorio.com', 'bio123', 'Preparador', 'Bio-Química']);
+      usuariosSheet.appendRow([docenteSTEMId, 'Docente STEM', 'docente.stem@laboratorio.com', 'docente123', 'Docente', 'STEM']);
+      usuariosSheet.appendRow([docenteBioId, 'Docente Bio-Química', 'docente.bio@laboratorio.com', 'docente123', 'Docente', 'Bio-Química']);
+    } else {
+      // Si ya existe, verificar si tiene columna Laboratorio, si no, agregarla
+      const headers = usuariosSheet.getRange(1, 1, 1, usuariosSheet.getLastColumn()).getValues()[0];
+      if (headers.indexOf('Laboratorio') === -1) {
+        // Agregar columna Laboratorio
+        usuariosSheet.getRange(1, 6).setValue('Laboratorio');
+        // Asignar STEM por defecto a usuarios existentes
+        const lastRow = usuariosSheet.getLastRow();
+        if (lastRow > 1) {
+          for (let i = 2; i <= lastRow; i++) {
+            usuariosSheet.getRange(i, 6).setValue('STEM');
+          }
+        }
+      }
+    }
   }
 
   // Solicitudes
-  let solicitudesSheet = inventarioSS.getSheetByName(SHEETS.SOLICITUDES);
+  let solicitudesSheet = ss.getSheetByName(SHEETS.SOLICITUDES);
   if (!solicitudesSheet) {
-    solicitudesSheet = inventarioSS.insertSheet(SHEETS.SOLICITUDES);
-    solicitudesSheet.getRange(1, 1, 1, 12).setValues([[
+    solicitudesSheet = ss.insertSheet(SHEETS.SOLICITUDES);
+    solicitudesSheet.getRange(1, 1, 1, 15).setValues([[
       'ID', 'Nombre', 'FechaInicio', 'FechaFin', 'FechaNecesaria', 'Materiales', 'MaterialesExtra',
-      'Docente', 'DocenteEmail', 'Estado', 'FotoPreparada', 'ObservacionesPreparador'
+      'Docente', 'DocenteEmail', 'Estado', 'FotoPreparada', 'ObservacionesPreparador',
+      'Laboratorio', 'DocumentoPractica', 'ImagenesPractica'
     ]]);
-    solicitudesSheet.getRange(1, 1, 1, 12).setFontWeight('bold');
+    solicitudesSheet.getRange(1, 1, 1, 15).setFontWeight('bold');
     solicitudesSheet.setFrozenRows(1);
   }
 
-  // Inicializar Bitácora en spreadsheet separado
+  // Categorías
+  let categoriasSheet = ss.getSheetByName(SHEETS.CATEGORIAS);
+  if (!categoriasSheet) {
+    categoriasSheet = ss.insertSheet(SHEETS.CATEGORIAS);
+    categoriasSheet.getRange(1, 1, 1, 2).setValues([['ID', 'Nombre']]);
+    categoriasSheet.getRange(1, 1, 1, 2).setFontWeight('bold');
+    categoriasSheet.setFrozenRows(1);
+
+    // Agregar categorías por defecto según el laboratorio
+    if (nombreLaboratorio === LABORATORIOS.STEM) {
+      const categoriasSTEM = [
+        'Mecánica', 'Electromagnetismo', 'Óptica', 'Termodinámica',
+        'Ondas y Acústica', 'Física Moderna', 'Electrónica', 'Otros'
+      ];
+      categoriasSTEM.forEach(cat => {
+        categoriasSheet.appendRow([Utilities.getUuid(), cat]);
+      });
+    } else {
+      const categoriasBio = [
+        'Microbiología', 'Biología Molecular', 'Química Orgánica', 'Química Inorgánica',
+        'Bioquímica', 'Análisis Clínicos', 'Material de Vidrio', 'Reactivos', 'Equipos', 'Otros'
+      ];
+      categoriasBio.forEach(cat => {
+        categoriasSheet.appendRow([Utilities.getUuid(), cat]);
+      });
+    }
+  }
+}
+
+/**
+ * Inicializa la hoja de Bitácora (compartida)
+ */
+function initializeBitacoraSheet() {
   const bitacoraSS = SpreadsheetApp.openById(BITACORA_SPREADSHEET_ID);
 
   let bitacoraSheet = bitacoraSS.getSheetByName(SHEETS.BITACORA);
   if (!bitacoraSheet) {
     bitacoraSheet = bitacoraSS.insertSheet(SHEETS.BITACORA);
-    bitacoraSheet.getRange(1, 1, 1, 7).setValues([[
-      'ID', 'Fecha', 'Practica', 'Items', 'Usuario', 'Observaciones', 'Preparador'
+    bitacoraSheet.getRange(1, 1, 1, 8).setValues([[
+      'ID', 'Fecha', 'Practica', 'Items', 'Usuario', 'Observaciones', 'Preparador', 'Laboratorio'
     ]]);
-    bitacoraSheet.getRange(1, 1, 1, 7).setFontWeight('bold');
+    bitacoraSheet.getRange(1, 1, 1, 8).setFontWeight('bold');
     bitacoraSheet.setFrozenRows(1);
+  } else {
+    // Si ya existe, verificar si tiene columna Laboratorio
+    const headers = bitacoraSheet.getRange(1, 1, 1, bitacoraSheet.getLastColumn()).getValues()[0];
+    if (headers.indexOf('Laboratorio') === -1) {
+      bitacoraSheet.getRange(1, 8).setValue('Laboratorio');
+      // Asignar STEM por defecto a entradas existentes
+      const lastRow = bitacoraSheet.getLastRow();
+      if (lastRow > 1) {
+        for (let i = 2; i <= lastRow; i++) {
+          bitacoraSheet.getRange(i, 8).setValue('STEM');
+        }
+      }
+    }
   }
-
-  return { success: true, message: 'Hojas inicializadas correctamente' };
 }
 
 /**
@@ -147,7 +248,8 @@ function loginUser(email, password) {
       return { success: false, message: 'Formato de email inválido' };
     }
 
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    // Usuarios están centralizados en el spreadsheet STEM
+    const ss = SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.USUARIOS);
 
     if (!sheet) {
@@ -170,7 +272,8 @@ function loginUser(email, password) {
             id: data[i][0],
             nombre: data[i][1],
             email: data[i][2],
-            rol: data[i][4]
+            rol: data[i][4],
+            laboratorio: data[i][5] || 'STEM' // Laboratorio asignado
           }
         };
       }
@@ -193,7 +296,8 @@ function cambiarPassword(email, oldPassword, newPassword) {
       return { success: false, error: 'La nueva contraseña debe tener al menos 6 caracteres' };
     }
 
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    // Usuarios centralizados en spreadsheet STEM
+    const ss = SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEETS.USUARIOS);
     const data = sheet.getDataRange().getValues();
 
@@ -214,11 +318,15 @@ function cambiarPassword(email, oldPassword, newPassword) {
 // ==================== INVENTARIO ====================
 
 /**
- * Obtiene todos los elementos del inventario
+ * Obtiene todos los elementos del inventario de un laboratorio
  */
-function getInventario() {
+function getInventario(laboratorio) {
   try {
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return [];
+    }
+
     let sheet = ss.getSheetByName(SHEETS.INVENTARIO);
 
     if (!sheet) {
@@ -238,7 +346,8 @@ function getInventario() {
           estado: data[i][3],
           categoria: data[i][4],
           descripcion: data[i][5] || '',
-          foto: data[i][6] || ''
+          foto: data[i][6] || '',
+          laboratorio: laboratorio || LABORATORIOS.STEM
         });
       }
     }
@@ -251,9 +360,43 @@ function getInventario() {
 }
 
 /**
+ * Obtiene las categorías de un laboratorio
+ */
+function getCategorias(laboratorio) {
+  try {
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return [];
+    }
+
+    let sheet = ss.getSheetByName(SHEETS.CATEGORIAS);
+    if (!sheet) {
+      return [];
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const categorias = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        categorias.push({
+          id: data[i][0],
+          nombre: data[i][1]
+        });
+      }
+    }
+
+    return categorias;
+  } catch (error) {
+    Logger.log('Error al obtener categorías: ' + error);
+    return [];
+  }
+}
+
+/**
  * Guarda un elemento (nuevo o actualiza existente)
  */
-function saveElemento(elemento) {
+function saveElemento(elemento, laboratorio) {
   try {
     // Validar datos requeridos
     if (!elemento.nombre || elemento.nombre.trim() === '') {
@@ -269,7 +412,11 @@ function saveElemento(elemento) {
       return { success: false, error: 'La categoría es requerida' };
     }
 
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return { success: false, error: 'Laboratorio inválido' };
+    }
+
     let sheet = ss.getSheetByName(SHEETS.INVENTARIO);
 
     if (!sheet) {
