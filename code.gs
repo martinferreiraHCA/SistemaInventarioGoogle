@@ -692,9 +692,13 @@ function exportInventarioToCSV(laboratorio) {
 /**
  * Importa inventario desde CSV
  */
-function importInventarioFromCSV(csvContent) {
+function importInventarioFromCSV(csvContent, laboratorio) {
   try {
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return { success: false, error: 'Laboratorio inválido' };
+    }
+
     let sheet = ss.getSheetByName(SHEETS.INVENTARIO);
 
     if (!sheet) {

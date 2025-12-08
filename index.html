@@ -12,9 +12,9 @@
         }
 
         :root {
-            --azul-principal: #2563eb;
-            --azul-oscuro: #1e40af;
-            --azul-claro: #3b82f6;
+            --azul-principal: #242B59;
+            --azul-oscuro: #1a1f3a;
+            --azul-claro: #2f3a6b;
             --rojo: #ef4444;
             --rojo-oscuro: #dc2626;
             --negro: #1f2937;
@@ -26,13 +26,10 @@
             --gris-oscuro: #6b7280;
             --border-color: #d1d5db;
             --amarillo: #f59e0b;
-            --morado: #8b5cf6;
             --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
             --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
             --shadow-lg: 0 10px 28px rgba(0,0,0,0.2);
-            --radius-sm: 6px;
-            --radius-md: 10px;
-            --radius-lg: 14px;
+            --radius-card: 6px;
         }
 
         body {
@@ -91,7 +88,6 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            border-radius: var(--radius-md);
             font-size: 14px;
             font-weight: 500;
             color: rgba(255, 255, 255, 0.85);
@@ -126,7 +122,6 @@
             font-size: 13px;
             font-weight: 600;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: var(--radius-md);
         }
 
         .logout-btn:hover {
@@ -159,7 +154,6 @@
             padding: 10px 18px;
             cursor: pointer;
             font-size: 16px;
-            border-radius: var(--radius-md);
             box-shadow: var(--shadow-md);
             transition: all 0.3s;
         }
@@ -199,7 +193,6 @@
             font-size: 14px;
             font-weight: 600;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: var(--radius-md);
             box-shadow: var(--shadow-sm);
             letter-spacing: 0.2px;
         }
@@ -224,12 +217,12 @@
         }
 
         .btn-success {
-            background-color: var(--verde);
+            background-color: var(--azul-principal);
             color: var(--blanco);
         }
 
         .btn-success:hover {
-            background-color: var(--verde-oscuro);
+            background-color: var(--azul-oscuro);
         }
 
         .btn-danger {
@@ -245,7 +238,7 @@
         .table-container {
             background-color: var(--blanco);
             padding: 28px;
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-card);
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--gris-medio);
             overflow-x: auto;
@@ -265,7 +258,6 @@
             flex: 1;
             min-width: 200px;
             background-color: var(--blanco);
-            border-radius: var(--radius-md);
             transition: all 0.3s;
         }
 
@@ -308,7 +300,6 @@
             height: 80px;
             object-fit: cover;
             cursor: pointer;
-            border-radius: var(--radius-md);
             border: 2px solid var(--border-color);
             transition: all 0.3s;
             background-color: var(--gris-medio);
@@ -350,7 +341,6 @@
             font-size: 12px;
             font-weight: 600;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: var(--radius-md);
         }
 
         .action-btn.edit {
@@ -398,7 +388,7 @@
 
         .modal-content {
             background-color: var(--blanco);
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-card);
             box-shadow: var(--shadow-lg);
             padding: 40px;
             max-width: 600px;
@@ -440,7 +430,6 @@
             font-size: 14px;
             font-family: inherit;
             background-color: var(--blanco);
-            border-radius: var(--radius-md);
             transition: all 0.3s;
         }
 
@@ -463,7 +452,6 @@
         .image-preview img {
             max-width: 100%;
             max-height: 300px;
-            border-radius: var(--radius-md);
             border: 2px solid var(--gris-medio);
         }
 
@@ -495,7 +483,7 @@
         .login-box {
             background-color: var(--blanco);
             padding: 56px 48px;
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-card);
             box-shadow: var(--shadow-lg);
             max-width: 420px;
             width: 90%;
@@ -518,7 +506,6 @@
             background-color: var(--verde);
             color: var(--blanco);
             padding: 16px 24px;
-            border-radius: var(--radius-md);
             box-shadow: var(--shadow-lg);
             z-index: 3000;
             display: none;
@@ -556,7 +543,7 @@
         .request-card {
             background-color: var(--blanco);
             padding: 28px;
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-card);
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--gris-medio);
             transition: all 0.3s;
@@ -614,7 +601,7 @@
             background-color: var(--blanco);
             padding: 24px;
             margin-bottom: 18px;
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-card);
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--gris-medio);
             border-left: 4px solid var(--azul-principal);
@@ -752,7 +739,7 @@
         .stat-card {
             background-color: var(--blanco);
             padding: 24px;
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-card);
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--gris-medio);
             border-left: 4px solid;
@@ -821,7 +808,6 @@
             font-size: 14px;
             flex: 1;
             min-width: 160px;
-            border-radius: var(--radius-md);
             transition: all 0.3s;
         }
 
@@ -867,7 +853,7 @@
                 <h2>Laboratorio</h2>
                 <div class="user-info" id="userInfo"></div>
                 <div id="labSelector" style="margin-top: 16px; display: none;">
-                    <select id="labSelect" style="width: 100%; padding: 8px 12px; border-radius: var(--radius-md); border: 1.5px solid rgba(255,255,255,0.2); background-color: rgba(255,255,255,0.1); color: var(--blanco); font-weight: 500; font-size: 13px;" onchange="changeLaboratorio()">
+                    <select id="labSelect" style="width: 100%; padding: 8px 12px; border: 1.5px solid rgba(255,255,255,0.2); background-color: rgba(255,255,255,0.1); color: var(--blanco); font-weight: 500; font-size: 13px;" onchange="changeLaboratorio()">
                         <option value="STEM">Laboratorio STEM</option>
                         <option value="Bio-Química">Laboratorio Bio-Química</option>
                     </select>
@@ -1092,7 +1078,7 @@
                 </div>
                 <div class="materials-selector">
                     <h4>Materiales del Inventario</h4>
-                    <input type="text" id="searchMateriales" placeholder="Buscar material..." style="width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <input type="text" id="searchMateriales" placeholder="Buscar material..." style="width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #ddd;">
                     <div id="materialesList"></div>
                 </div>
                 <div class="form-group">
@@ -1429,7 +1415,7 @@
                     hideLoading();
                     showNotification('Error al cargar inventario: ' + error.message, 'error');
                 })
-                .getInventario();
+                .getInventario(currentLaboratorio);
         }
 
         // Mostrar inventario
@@ -1578,7 +1564,7 @@
                     hideLoading();
                     showNotification('Error: ' + error.message, 'error');
                 })
-                .saveElemento(elemento);
+                .saveElemento(elemento, currentLaboratorio);
         }
 
         function deleteElemento(id) {
@@ -1599,7 +1585,7 @@
                     hideLoading();
                     showNotification('Error: ' + error.message, 'error');
                 })
-                .deleteElemento(id);
+                .deleteElemento(id, currentLaboratorio);
         }
 
         // Bitácora
@@ -1817,7 +1803,7 @@
                     <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
                     ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
                     <span class="request-status ${item.estado.toLowerCase()}">${item.estado}</span>
-                    ${item.fotoPreparada ? `<div style="margin-top: 10px;"><img src="${item.fotoPreparada}" style="max-width: 100%; border-radius: 6px;"></div>` : ''}
+                    ${item.fotoPreparada ? `<div style="margin-top: 10px;"><img src="${item.fotoPreparada}" style="max-width: 100%;"></div>` : ''}
                     ${item.observacionesPreparador ? `<div class="request-info" style="margin-top: 10px;"><strong>Observaciones del preparador:</strong> ${item.observacionesPreparador}</div>` : ''}
                 </div>`;
             });
@@ -1844,7 +1830,7 @@
                     ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
                     <span class="request-status ${item.estado.toLowerCase()}">${item.estado}</span>
                     ${item.estado === 'Pendiente' ? `<br><button class="btn btn-success" style="margin-top: 10px;" onclick='openPrepararModal(${JSON.stringify(item).replace(/'/g, "&apos;")})'>Marcar como Preparada</button>` : ''}
-                    ${item.fotoPreparada ? `<div style="margin-top: 10px;"><img src="${item.fotoPreparada}" style="max-width: 100%; border-radius: 6px;"></div>` : ''}
+                    ${item.fotoPreparada ? `<div style="margin-top: 10px;"><img src="${item.fotoPreparada}" style="max-width: 100%;"></div>` : ''}
                 </div>`;
             });
 
@@ -2171,7 +2157,7 @@
                     hideLoading();
                     console.error('Error al cargar estadísticas:', error);
                 })
-                .getEstadisticasInventario();
+                .getEstadisticasInventario(currentLaboratorio);
         }
 
         function displayEstadisticas(stats) {
@@ -2324,7 +2310,7 @@
                     hideLoading();
                     showNotification('Error: ' + error.message, 'error');
                 })
-                .exportInventarioToCSV();
+                .exportInventarioToCSV(currentLaboratorio);
         }
 
         function importInventario(event) {
@@ -2346,7 +2332,7 @@
                             }
                             showNotification(mensaje);
                             loadInventario();
-                            if (currentUser.rol === 'Preparador') {
+                            if (currentUser.rol === 'Preparador' || currentUser.rol === 'Admin') {
                                 loadEstadisticas();
                             }
                             // Limpiar el input file
@@ -2359,7 +2345,7 @@
                         hideLoading();
                         showNotification('Error: ' + error.message, 'error');
                     })
-                    .importInventarioFromCSV(csvContent);
+                    .importInventarioFromCSV(csvContent, currentLaboratorio);
             };
 
             reader.readAsText(file);
