@@ -2,10 +2,13 @@
  * Sistema de Gestión de Laboratorio
  * Backend en Google Apps Script
  *
- * Spreadsheet: https://docs.google.com/spreadsheets/d/19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A/edit
+ * Bitácora: https://docs.google.com/spreadsheets/d/19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A/edit
+ * Inventario: https://docs.google.com/spreadsheets/d/1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE/edit
  */
 
-const SPREADSHEET_ID = '19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A';
+// IDs de los Spreadsheets
+const BITACORA_SPREADSHEET_ID = '19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A';
+const INVENTARIO_SPREADSHEET_ID = '1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE';
 
 // Nombres de las hojas
 const SHEETS = {
@@ -29,12 +32,13 @@ function doGet(e) {
  * Inicializa las hojas si no existen
  */
 function initializeSheets() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  // Inicializar Inventario, Usuarios y Solicitudes
+  const inventarioSS = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
 
   // Inventario
-  let inventarioSheet = ss.getSheetByName(SHEETS.INVENTARIO);
+  let inventarioSheet = inventarioSS.getSheetByName(SHEETS.INVENTARIO);
   if (!inventarioSheet) {
-    inventarioSheet = ss.insertSheet(SHEETS.INVENTARIO);
+    inventarioSheet = inventarioSS.insertSheet(SHEETS.INVENTARIO);
     inventarioSheet.getRange(1, 1, 1, 7).setValues([[
       'ID', 'Nombre', 'Cantidad', 'Estado', 'Categoria', 'Descripcion', 'Foto'
     ]]);
@@ -43,9 +47,9 @@ function initializeSheets() {
   }
 
   // Usuarios
-  let usuariosSheet = ss.getSheetByName(SHEETS.USUARIOS);
+  let usuariosSheet = inventarioSS.getSheetByName(SHEETS.USUARIOS);
   if (!usuariosSheet) {
-    usuariosSheet = ss.insertSheet(SHEETS.USUARIOS);
+    usuariosSheet = inventarioSS.insertSheet(SHEETS.USUARIOS);
     usuariosSheet.getRange(1, 1, 1, 5).setValues([[
       'ID', 'Nombre', 'Email', 'Password', 'Rol'
     ]]);
@@ -60,25 +64,27 @@ function initializeSheets() {
   }
 
   // Solicitudes
-  let solicitudesSheet = ss.getSheetByName(SHEETS.SOLICITUDES);
+  let solicitudesSheet = inventarioSS.getSheetByName(SHEETS.SOLICITUDES);
   if (!solicitudesSheet) {
-    solicitudesSheet = ss.insertSheet(SHEETS.SOLICITUDES);
-    solicitudesSheet.getRange(1, 1, 1, 11).setValues([[
+    solicitudesSheet = inventarioSS.insertSheet(SHEETS.SOLICITUDES);
+    solicitudesSheet.getRange(1, 1, 1, 12).setValues([[
       'ID', 'Nombre', 'FechaInicio', 'FechaFin', 'FechaNecesaria', 'Materiales', 'MaterialesExtra',
       'Docente', 'DocenteEmail', 'Estado', 'FotoPreparada', 'ObservacionesPreparador'
     ]]);
-    solicitudesSheet.getRange(1, 1, 1, 11).setFontWeight('bold');
+    solicitudesSheet.getRange(1, 1, 1, 12).setFontWeight('bold');
     solicitudesSheet.setFrozenRows(1);
   }
 
-  // Bitácora
-  let bitacoraSheet = ss.getSheetByName(SHEETS.BITACORA);
+  // Inicializar Bitácora en spreadsheet separado
+  const bitacoraSS = SpreadsheetApp.openById(BITACORA_SPREADSHEET_ID);
+
+  let bitacoraSheet = bitacoraSS.getSheetByName(SHEETS.BITACORA);
   if (!bitacoraSheet) {
-    bitacoraSheet = ss.insertSheet(SHEETS.BITACORA);
-    bitacoraSheet.getRange(1, 1, 1, 6).setValues([[
+    bitacoraSheet = bitacoraSS.insertSheet(SHEETS.BITACORA);
+    bitacoraSheet.getRange(1, 1, 1, 7).setValues([[
       'ID', 'Fecha', 'Practica', 'Items', 'Usuario', 'Observaciones', 'Preparador'
     ]]);
-    bitacoraSheet.getRange(1, 1, 1, 6).setFontWeight('bold');
+    bitacoraSheet.getRange(1, 1, 1, 7).setFontWeight('bold');
     bitacoraSheet.setFrozenRows(1);
   }
 
@@ -130,7 +136,7 @@ function uploadImage(base64Data, fileName) {
  */
 function loginUser(email, password) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.USUARIOS);
 
     if (!sheet) {
@@ -168,7 +174,7 @@ function loginUser(email, password) {
  */
 function getInventario() {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.INVENTARIO);
 
     if (!sheet) {
@@ -205,7 +211,7 @@ function getInventario() {
  */
 function saveElemento(elemento) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.INVENTARIO);
 
     if (!sheet) {
@@ -267,7 +273,7 @@ function saveElemento(elemento) {
  */
 function deleteElemento(id) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEETS.INVENTARIO);
     const data = sheet.getDataRange().getValues();
 
@@ -292,7 +298,7 @@ function deleteElemento(id) {
  */
 function getBitacora() {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(BITACORA_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.BITACORA);
 
     if (!sheet) {
@@ -332,7 +338,7 @@ function getBitacora() {
  */
 function saveBitacora(entry) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(BITACORA_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.BITACORA);
 
     if (!sheet) {
@@ -406,7 +412,7 @@ function addBitacoraFromSolicitud(solicitud, preparador) {
  */
 function deleteBitacora(id) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(BITACORA_SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEETS.BITACORA);
     const data = sheet.getDataRange().getValues();
 
@@ -429,7 +435,7 @@ function deleteBitacora(id) {
  */
 function exportBitacoraToCSV() {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(BITACORA_SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEETS.BITACORA);
 
     if (!sheet) {
@@ -474,7 +480,7 @@ function exportBitacoraToCSV() {
  */
 function importBitacoraFromCSV(csvContent) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(BITACORA_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.BITACORA);
 
     if (!sheet) {
@@ -563,7 +569,7 @@ function parseCSVLine(line) {
  */
 function getAllSolicitudes() {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
 
     if (!sheet) {
@@ -618,7 +624,7 @@ function getSolicitudesByDocente(email) {
  */
 function saveSolicitud(solicitud) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
 
     if (!sheet) {
@@ -654,7 +660,7 @@ function saveSolicitud(solicitud) {
  */
 function marcarSolicitudPreparada(data) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
     const sheetData = sheet.getDataRange().getValues();
 
@@ -710,7 +716,7 @@ function marcarSolicitudPreparada(data) {
  */
 function getUsuarios() {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.USUARIOS);
 
     if (!sheet) {
@@ -745,7 +751,7 @@ function getUsuarios() {
  */
 function saveUsuario(usuario) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.USUARIOS);
 
     if (!sheet) {
@@ -800,7 +806,7 @@ function saveUsuario(usuario) {
  */
 function deleteUsuario(id) {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEETS.USUARIOS);
     const data = sheet.getDataRange().getValues();
 

@@ -30,22 +30,31 @@ Sistema completo de gestión de laboratorio con inventario, bitácora, solicitud
 
 ### 1. Configurar Google Sheets
 
-1. Abre la hoja de cálculo: [Sistema Inventario Laboratorio](https://docs.google.com/spreadsheets/d/19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A/edit)
-2. Haz una copia de la hoja: **Archivo → Hacer una copia**
+El sistema utiliza **dos hojas de cálculo separadas**:
+
+#### A. Hoja de Bitácora
+1. Abre la hoja: [Bitácora del Laboratorio](https://docs.google.com/spreadsheets/d/19rvs-kBt9o87d40-8nIFUtv8_KnKXnxPfwegUT9h24A/edit)
+2. Haz una copia: **Archivo → Hacer una copia**
+3. Anota el ID de tu nueva hoja (está en la URL después de `/d/` y antes de `/edit`)
+
+#### B. Hoja de Inventario
+1. Abre la hoja: [Inventario del Laboratorio](https://docs.google.com/spreadsheets/d/1w46H58534iN35C55oZHbs4jUpNc6IGX1_NME5ASVbhE/edit)
+2. Haz una copia: **Archivo → Hacer una copia**
 3. Anota el ID de tu nueva hoja (está en la URL después de `/d/` y antes de `/edit`)
 
 ### 2. Crear el Proyecto de Apps Script
 
-1. En tu hoja de cálculo, ve a **Extensiones → Apps Script**
+1. En **cualquiera de las dos hojas**, ve a **Extensiones → Apps Script**
 2. Borra el código predeterminado
 3. Crea dos archivos:
 
 #### Archivo: `Code.gs`
 - Copia todo el contenido del archivo `code.gs` de este proyecto
-- **IMPORTANTE**: Reemplaza el `SPREADSHEET_ID` en la línea 8 con el ID de tu hoja
+- **IMPORTANTE**: Reemplaza ambos IDs en las líneas 8 y 9 con los IDs de tus hojas
 
 ```javascript
-const SPREADSHEET_ID = 'TU_ID_AQUI';
+const BITACORA_SPREADSHEET_ID = 'ID_DE_TU_HOJA_BITACORA';
+const INVENTARIO_SPREADSHEET_ID = 'ID_DE_TU_HOJA_INVENTARIO';
 ```
 
 #### Archivo: `index.html`
@@ -69,7 +78,10 @@ const SPREADSHEET_ID = 'TU_ID_AQUI';
 
 1. En el editor de Apps Script, selecciona la función `initializeSheets` en el menú desplegable
 2. Haz clic en **Ejecutar**
-3. Esto creará automáticamente las hojas necesarias y usuarios de ejemplo
+3. Esto creará automáticamente las hojas necesarias en ambos spreadsheets:
+   - **Bitácora Spreadsheet**: Hoja "Bitacora"
+   - **Inventario Spreadsheet**: Hojas "Inventario", "Usuarios" y "Solicitudes"
+4. También creará usuarios de ejemplo para que puedas probar el sistema
 
 ## 👥 Usuarios de Ejemplo
 
@@ -169,19 +181,29 @@ El sistema está completamente optimizado para dispositivos móviles:
 
 ## 🗂️ Estructura de Google Sheets
 
-El sistema crea automáticamente 4 hojas en tu Google Sheets:
+El sistema utiliza **dos hojas de cálculo separadas** para mejor organización:
 
-### 1. Inventario
-Columnas: ID, Nombre, Cantidad, Estado, Categoria, Descripcion, Foto
+### Hoja de Bitácora (BITACORA_SPREADSHEET_ID)
+Contiene 1 hoja:
 
-### 2. Usuarios
-Columnas: ID, Nombre, Email, Password, Rol
+**Bitacora**
+- Columnas: ID, Fecha, Practica, Items, Usuario, Observaciones, Preparador
+- Almacena todas las entradas de la bitácora del laboratorio
 
-### 3. Solicitudes
-Columnas: ID, Nombre, FechaInicio, FechaFin, FechaNecesaria, Materiales, MaterialesExtra, Docente, DocenteEmail, Estado, FotoPreparada, ObservacionesPreparador
+### Hoja de Inventario (INVENTARIO_SPREADSHEET_ID)
+Contiene 3 hojas:
 
-### 4. Bitacora
-Columnas: ID, Fecha, Practica, Items, Usuario, Observaciones, Preparador
+**1. Inventario**
+- Columnas: ID, Nombre, Cantidad, Estado, Categoria, Descripcion, Foto
+- Almacena todos los elementos del inventario
+
+**2. Usuarios**
+- Columnas: ID, Nombre, Email, Password, Rol
+- Almacena los usuarios del sistema
+
+**3. Solicitudes**
+- Columnas: ID, Nombre, FechaInicio, FechaFin, FechaNecesaria, Materiales, MaterialesExtra, Docente, DocenteEmail, Estado, FotoPreparada, ObservacionesPreparador
+- Almacena las solicitudes de prácticas
 
 ## 📸 Gestión de Imágenes
 
@@ -234,8 +256,9 @@ En `index.html`, busca los selectores de categoría y agrega/modifica opciones:
 ## 🐛 Solución de Problemas
 
 ### Error: "No se puede conectar con Google Sheets"
-- Verifica que el `SPREADSHEET_ID` en `code.gs` sea correcto
-- Asegúrate de haber autorizado los permisos del script
+- Verifica que ambos IDs (`BITACORA_SPREADSHEET_ID` y `INVENTARIO_SPREADSHEET_ID`) en `code.gs` sean correctos
+- Asegúrate de haber autorizado los permisos del script para acceder a ambas hojas
+- Confirma que has hecho copias de ambas hojas de cálculo (Bitácora e Inventario)
 
 ### Las imágenes no se cargan
 - Verifica que los archivos en Drive tengan permisos de "Cualquiera con el enlace"
