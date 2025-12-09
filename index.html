@@ -1505,8 +1505,19 @@
                 const ubicacionDisplay = item.ubicacion || '<span style="color: #999;">No especificada</span>';
                 const fotoUbicacionIcon = item.fotoUbicacion ? ` <a href="#" onclick="viewImage('${item.fotoUbicacion}'); return false;" style="color: var(--azul-principal); margin-left: 4px;" title="Ver foto de ubicación">📷</a>` : '';
 
+                // Debug: Verificar si hay foto
+                if (item.foto) {
+                    console.log('Elemento con foto:', item.nombre, 'URL:', item.foto);
+                }
+
+                // Crear imagen con mejor manejo de errores
+                let fotoHtml = '<span style="color: var(--text-secondary); font-size: 12px;">Sin imagen</span>';
+                if (item.foto) {
+                    fotoHtml = `<img src="${item.foto}" class="item-image" onclick="viewImage('${item.foto}')" onerror="console.error('Error cargando imagen:', '${item.foto}'); this.style.display='none'; this.nextElementSibling.style.display='inline';" alt="${item.nombre}" loading="lazy"><span style="color: red; font-size: 11px; display: none;">❌ Error</span>`;
+                }
+
                 html += `<tr>
-                    <td>${item.foto ? `<img src="${item.foto}" class="item-image" onclick="viewImage('${item.foto}')">` : '<span style="color: var(--text-secondary); font-size: 12px;">Sin imagen</span>'}</td>
+                    <td>${fotoHtml}</td>
                     <td>${item.nombre}</td>
                     <td>${item.cantidad}</td>
                     <td><span class="status-badge status-${item.estado.toLowerCase()}">${item.estado}</span></td>
