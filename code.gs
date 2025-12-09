@@ -1429,7 +1429,8 @@ function getUsuarios() {
           nombre: data[i][1],
           email: data[i][2],
           password: data[i][3],
-          rol: data[i][4]
+          rol: data[i][4],
+          laboratorio: data[i][5] || 'STEM'
         });
       }
     }
@@ -1487,12 +1488,13 @@ function saveUsuario(usuario) {
     if (usuario.id) {
       for (let i = 1; i < data.length; i++) {
         if (data[i][0] === usuario.id) {
-          sheet.getRange(i + 1, 1, 1, 5).setValues([[
+          sheet.getRange(i + 1, 1, 1, 6).setValues([[
             usuario.id,
             usuario.nombre.trim(),
             usuario.email.trim(),
             usuario.password,
-            usuario.rol
+            usuario.rol,
+            usuario.laboratorio || 'STEM'
           ]]);
           return { success: true };
         }
@@ -1506,7 +1508,8 @@ function saveUsuario(usuario) {
       usuario.nombre.trim(),
       usuario.email.trim(),
       usuario.password,
-      usuario.rol
+      usuario.rol,
+      usuario.laboratorio || 'STEM'
     ]);
 
     return { success: true };

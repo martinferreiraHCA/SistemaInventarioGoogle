@@ -1165,6 +1165,13 @@
                         <option value="Preparador">Preparador (Admin)</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>Laboratorio *</label>
+                    <select id="usuarioLaboratorio" required>
+                        <option value="STEM">STEM</option>
+                        <option value="Bio-Química">Bio-Química</option>
+                    </select>
+                </div>
                 <div class="modal-actions">
                     <button type="button" class="btn close-modal" onclick="closeUsuarioModal()">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar</button>
@@ -2193,6 +2200,7 @@
                         <th>Nombre</th>
                         <th>Email</th>
                         <th>Rol</th>
+                        <th>Laboratorio</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -2203,6 +2211,7 @@
                     <td>${item.nombre}</td>
                     <td>${item.email}</td>
                     <td>${item.rol}</td>
+                    <td>${item.laboratorio || 'STEM'}</td>
                     <td>
                         <button class="action-btn edit" onclick='editUsuario(${JSON.stringify(item)})'>Editar</button>
                         <button class="action-btn delete" onclick="deleteUsuario('${item.id}')">Eliminar</button>
@@ -2228,6 +2237,7 @@
             document.getElementById('usuarioEmail').value = usuario.email;
             document.getElementById('usuarioPassword').value = usuario.password;
             document.getElementById('usuarioRol').value = usuario.rol;
+            document.getElementById('usuarioLaboratorio').value = usuario.laboratorio || 'STEM';
             document.getElementById('usuarioModal').classList.add('active');
         }
 
@@ -2243,7 +2253,8 @@
                 nombre: document.getElementById('usuarioNombre').value,
                 email: document.getElementById('usuarioEmail').value,
                 password: document.getElementById('usuarioPassword').value,
-                rol: document.getElementById('usuarioRol').value
+                rol: document.getElementById('usuarioRol').value,
+                laboratorio: document.getElementById('usuarioLaboratorio').value
             };
 
             showLoading();
