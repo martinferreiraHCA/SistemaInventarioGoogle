@@ -24,7 +24,8 @@ const SHEETS = {
   USUARIOS: 'Usuarios',
   SOLICITUDES: 'Solicitudes',
   BITACORA: 'Bitacora',
-  CATEGORIAS: 'Categorias'
+  CATEGORIAS: 'Categorias',
+  ALTAS_BAJAS: 'AltasBajas'
 };
 
 // Función helper para obtener el spreadsheet según el laboratorio
@@ -73,11 +74,23 @@ function initializeLaboratorioSheets(spreadsheetId, nombreLaboratorio) {
   let inventarioSheet = ss.getSheetByName(SHEETS.INVENTARIO);
   if (!inventarioSheet) {
     inventarioSheet = ss.insertSheet(SHEETS.INVENTARIO);
-    inventarioSheet.getRange(1, 1, 1, 7).setValues([[
-      'ID', 'Nombre', 'Cantidad', 'Estado', 'Categoria', 'Descripcion', 'Foto'
+    inventarioSheet.getRange(1, 1, 1, 9).setValues([[
+      'ID', 'Nombre', 'Cantidad', 'Estado', 'Categoria', 'Descripcion', 'Foto', 'Ubicacion', 'FotoUbicacion'
     ]]);
-    inventarioSheet.getRange(1, 1, 1, 7).setFontWeight('bold');
+    inventarioSheet.getRange(1, 1, 1, 9).setFontWeight('bold');
     inventarioSheet.setFrozenRows(1);
+  } else {
+    // Si ya existe, verificar si tiene las nuevas columnas
+    const headers = inventarioSheet.getRange(1, 1, 1, inventarioSheet.getLastColumn()).getValues()[0];
+    let columnsAdded = false;
+    if (headers.indexOf('Ubicacion') === -1) {
+      inventarioSheet.getRange(1, 8).setValue('Ubicacion');
+      columnsAdded = true;
+    }
+    if (headers.indexOf('FotoUbicacion') === -1) {
+      inventarioSheet.getRange(1, 9).setValue('FotoUbicacion');
+      columnsAdded = true;
+    }
   }
 
   // Usuarios (solo en spreadsheet STEM - centralizado)
@@ -159,6 +172,17 @@ function initializeLaboratorioSheets(spreadsheetId, nombreLaboratorio) {
         categoriasSheet.appendRow([Utilities.getUuid(), cat]);
       });
     }
+  }
+
+  // Altas y Bajas
+  let altasBajasSheet = ss.getSheetByName(SHEETS.ALTAS_BAJAS);
+  if (!altasBajasSheet) {
+    altasBajasSheet = ss.insertSheet(SHEETS.ALTAS_BAJAS);
+    altasBajasSheet.getRange(1, 1, 1, 8).setValues([[
+      'ID', 'Fecha', 'Tipo', 'ElementoID', 'ElementoNombre', 'Cantidad', 'Motivo', 'Usuario'
+    ]]);
+    altasBajasSheet.getRange(1, 1, 1, 8).setFontWeight('bold');
+    altasBajasSheet.setFrozenRows(1);
   }
 }
 
@@ -347,6 +371,8 @@ function getInventario(laboratorio) {
           categoria: data[i][4],
           descripcion: data[i][5] || '',
           foto: data[i][6] || '',
+          ubicacion: data[i][7] || '',
+          fotoUbicacion: data[i][8] || '',
           laboratorio: laboratorio || LABORATORIOS.STEM
         });
       }
@@ -424,7 +450,7 @@ function saveElemento(elemento, laboratorio) {
       sheet = ss.getSheetByName(SHEETS.INVENTARIO);
     }
 
-    // Procesar foto si existe
+    // Procesar foto del elemento si existe
     let fotoURL = elemento.foto || '';
     if (elemento.foto && elemento.foto.startsWith('data:')) {
       const fileName = 'elemento_' + Date.now() + '.jpg';
@@ -434,20 +460,32 @@ function saveElemento(elemento, laboratorio) {
       }
     }
 
+    // Procesar foto de ubicación si existe
+    let fotoUbicacionURL = elemento.fotoUbicacion || '';
+    if (elemento.fotoUbicacion && elemento.fotoUbicacion.startsWith('data:')) {
+      const fileName = 'ubicacion_' + Date.now() + '.jpg';
+      const uploadResult = uploadImage(elemento.fotoUbicacion, fileName);
+      if (uploadResult.success) {
+        fotoUbicacionURL = uploadResult.url;
+      }
+    }
+
     const data = sheet.getDataRange().getValues();
 
     // Si tiene ID, actualizar
     if (elemento.id) {
       for (let i = 1; i < data.length; i++) {
         if (data[i][0] === elemento.id) {
-          sheet.getRange(i + 1, 1, 1, 7).setValues([[
+          sheet.getRange(i + 1, 1, 1, 9).setValues([[
             elemento.id,
             elemento.nombre.trim(),
             parseInt(elemento.cantidad),
             elemento.estado,
             elemento.categoria,
             elemento.descripcion || '',
-            fotoURL
+            fotoURL,
+            elemento.ubicacion || '',
+            fotoUbicacionURL
           ]]);
           return { success: true };
         }
@@ -463,7 +501,9 @@ function saveElemento(elemento, laboratorio) {
       elemento.estado,
       elemento.categoria,
       elemento.descripcion || '',
-      fotoURL
+      fotoURL,
+      elemento.ubicacion || '',
+      fotoUbicacionURL
     ]);
 
     return { success: true };
@@ -1459,6 +1499,123 @@ function sendNotification(email, subject, body) {
     return { success: true };
   } catch (error) {
     Logger.log('Error al enviar notificación: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== SISTEMA DE ALTAS Y BAJAS ====================
+
+/**
+ * Registra un alta o baja de inventario
+ */
+function registrarAltaBaja(tipo, elementoId, elementoNombre, cantidad, motivo, usuario, laboratorio) {
+  try {
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return { success: false, error: 'Laboratorio inválido' };
+    }
+
+    let sheet = ss.getSheetByName(SHEETS.ALTAS_BAJAS);
+    if (!sheet) {
+      initializeSheets();
+      sheet = ss.getSheetByName(SHEETS.ALTAS_BAJAS);
+    }
+
+    const id = Utilities.getUuid();
+    const fecha = new Date();
+
+    sheet.appendRow([
+      id,
+      formatDate(fecha),
+      tipo, // 'Alta' o 'Baja'
+      elementoId,
+      elementoNombre,
+      parseInt(cantidad),
+      motivo || '',
+      usuario
+    ]);
+
+    return { success: true };
+  } catch (error) {
+    Logger.log('Error al registrar alta/baja: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Obtiene el historial de altas y bajas de un laboratorio
+ */
+function getAltasBajas(laboratorio) {
+  try {
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return [];
+    }
+
+    let sheet = ss.getSheetByName(SHEETS.ALTAS_BAJAS);
+    if (!sheet) {
+      return [];
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const registros = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        registros.push({
+          id: data[i][0],
+          fecha: data[i][1],
+          tipo: data[i][2],
+          elementoId: data[i][3],
+          elementoNombre: data[i][4],
+          cantidad: data[i][5],
+          motivo: data[i][6] || '',
+          usuario: data[i][7]
+        });
+      }
+    }
+
+    // Ordenar por fecha descendente (más recientes primero)
+    registros.sort((a, b) => {
+      const fechaA = new Date(a.fecha);
+      const fechaB = new Date(b.fecha);
+      return fechaB - fechaA;
+    });
+
+    return registros;
+  } catch (error) {
+    Logger.log('Error al obtener altas/bajas: ' + error);
+    return [];
+  }
+}
+
+/**
+ * Elimina un registro de alta/baja
+ */
+function deleteAltaBaja(id, laboratorio) {
+  try {
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) {
+      return { success: false, error: 'Laboratorio inválido' };
+    }
+
+    let sheet = ss.getSheetByName(SHEETS.ALTAS_BAJAS);
+    if (!sheet) {
+      return { success: false, error: 'Hoja no encontrada' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === id) {
+        sheet.deleteRow(i + 1);
+        return { success: true };
+      }
+    }
+
+    return { success: false, error: 'Registro no encontrado' };
+  } catch (error) {
+    Logger.log('Error al eliminar alta/baja: ' + error);
     return { success: false, error: error.toString() };
   }
 }

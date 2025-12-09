@@ -961,6 +961,17 @@
                     <div id="usuariosTable"></div>
                 </div>
             </div>
+
+            <!-- Vista: Altas y Bajas -->
+            <div id="altasBajasView" class="view">
+                <div class="header">
+                    <h1>Historial de Altas y Bajas</h1>
+                </div>
+                <div class="table-container">
+                    <button class="btn btn-primary" onclick="openRegistrarAltaBajaModal()" style="margin-bottom: 20px;">Registrar Alta/Baja</button>
+                    <div id="altasBajasTable"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1005,9 +1016,18 @@
                     <textarea id="elementoDescripcion"></textarea>
                 </div>
                 <div class="form-group">
+                    <label>Ubicación Física</label>
+                    <input type="text" id="elementoUbicacion" placeholder="Ej: Estante 3, Cajón 2">
+                </div>
+                <div class="form-group">
                     <label>Foto del Elemento</label>
                     <input type="file" id="elementoFoto" accept="image/*">
                     <div class="image-preview" id="elementoImagePreview"></div>
+                </div>
+                <div class="form-group">
+                    <label>Foto de Ubicación/Mueble</label>
+                    <input type="file" id="elementoFotoUbicacion" accept="image/*">
+                    <div class="image-preview" id="elementoFotoUbicacionPreview"></div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn close-modal" onclick="closeElementoModal()">Cancelar</button>
@@ -1180,6 +1200,42 @@
         </div>
     </div>
 
+    <!-- Modal: Registrar Alta/Baja -->
+    <div id="altaBajaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Registrar Alta o Baja</h2>
+            </div>
+            <form id="altaBajaForm">
+                <div class="form-group">
+                    <label>Tipo de Movimiento *</label>
+                    <select id="altaBajaTipo" required>
+                        <option value="Alta">Alta (Ingreso de inventario)</option>
+                        <option value="Baja">Baja (Salida de inventario)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Elemento *</label>
+                    <select id="altaBajaElemento" required>
+                        <option value="">Seleccione un elemento</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad *</label>
+                    <input type="number" id="altaBajaCantidad" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Motivo *</label>
+                    <textarea id="altaBajaMotivo" placeholder="Describa el motivo del movimiento" required></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn close-modal" onclick="closeAltaBajaModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Variables globales
         let currentUser = null;
@@ -1190,6 +1246,7 @@
         let bitacoraCompleta = [];
         let usuarios = [];
         let estadisticas = null;
+        let altasBajas = [];
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
@@ -1210,6 +1267,7 @@
 
             // Event listeners para preview de imágenes
             document.getElementById('elementoFoto').addEventListener('change', previewImage);
+            document.getElementById('elementoFotoUbicacion').addEventListener('change', previewFotoUbicacion);
             document.getElementById('prepararFoto').addEventListener('change', previewPrepararImage);
 
             // Forms
@@ -1317,6 +1375,7 @@
             loadInventario();
             if (currentUser.rol === 'Preparador' || currentUser.rol === 'Admin') {
                 loadEstadisticas();
+                loadAltasBajas();
                 loadBitacora();
                 loadUsuarios();
                 loadAllSolicitudes();
@@ -1336,6 +1395,7 @@
                 loadInventario();
                 if (currentUser.rol === 'Admin' || currentUser.rol === 'Preparador') {
                     loadEstadisticas();
+                    loadAltasBajas();
                     loadBitacora();
                     loadAllSolicitudes();
                 }
@@ -1350,6 +1410,7 @@
             if (currentUser.rol === 'Admin' || currentUser.rol === 'Preparador') {
                 menuItems = [
                     { id: 'inventario', text: 'Inventario', view: 'inventarioView' },
+                    { id: 'altasBajas', text: 'Altas y Bajas', view: 'altasBajasView' },
                     { id: 'bitacora', text: 'Bitácora', view: 'bitacoraView' },
                     { id: 'solicitudes', text: 'Solicitudes', view: 'gestionSolicitudesView' },
                     { id: 'usuarios', text: 'Usuarios', view: 'usuariosView' }
@@ -1434,19 +1495,24 @@
                         <th>Cantidad</th>
                         <th>Estado</th>
                         <th>Categoría</th>
-                        ${currentUser.rol === 'Preparador' ? '<th>Acciones</th>' : ''}
+                        <th>Ubicación</th>
+                        ${currentUser.rol === 'Preparador' || currentUser.rol === 'Admin' ? '<th>Acciones</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>`;
 
             items.forEach(item => {
+                const ubicacionDisplay = item.ubicacion || '<span style="color: #999;">No especificada</span>';
+                const fotoUbicacionIcon = item.fotoUbicacion ? ` <a href="#" onclick="viewImage('${item.fotoUbicacion}'); return false;" style="color: var(--azul-principal); margin-left: 4px;" title="Ver foto de ubicación">📷</a>` : '';
+
                 html += `<tr>
                     <td>${item.foto ? `<img src="${item.foto}" class="item-image" onclick="viewImage('${item.foto}')">` : '<span style="color: var(--text-secondary); font-size: 12px;">Sin imagen</span>'}</td>
                     <td>${item.nombre}</td>
                     <td>${item.cantidad}</td>
                     <td><span class="status-badge status-${item.estado.toLowerCase()}">${item.estado}</span></td>
                     <td>${item.categoria}</td>
-                    ${currentUser.rol === 'Preparador' ? `
+                    <td>${ubicacionDisplay}${fotoUbicacionIcon}</td>
+                    ${currentUser.rol === 'Preparador' || currentUser.rol === 'Admin' ? `
                     <td>
                         <button class="action-btn edit" onclick='editElemento(${JSON.stringify(item)})'>Editar</button>
                         <button class="action-btn delete" onclick="deleteElemento('${item.id}')">Eliminar</button>
@@ -1491,12 +1557,20 @@
             document.getElementById('elementoEstado').value = item.estado;
             document.getElementById('elementoCategoria').value = item.categoria;
             document.getElementById('elementoDescripcion').value = item.descripcion || '';
+            document.getElementById('elementoUbicacion').value = item.ubicacion || '';
 
             const preview = document.getElementById('elementoImagePreview');
             if (item.foto) {
                 preview.innerHTML = `<img src="${item.foto}" alt="Preview">`;
             } else {
                 preview.innerHTML = '';
+            }
+
+            const previewUbicacion = document.getElementById('elementoFotoUbicacionPreview');
+            if (item.fotoUbicacion) {
+                previewUbicacion.innerHTML = `<img src="${item.fotoUbicacion}" alt="Preview Ubicación">`;
+            } else {
+                previewUbicacion.innerHTML = '';
             }
 
             document.getElementById('elementoModal').classList.add('active');
@@ -1517,32 +1591,66 @@
             }
         }
 
+        function previewFotoUbicacion(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('elementoFotoUbicacionPreview').innerHTML = `<img src="${e.target.result}" alt="Preview Ubicación">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
         function saveElemento(event) {
             event.preventDefault();
 
             const foto = document.getElementById('elementoFoto').files[0];
+            const fotoUbicacion = document.getElementById('elementoFotoUbicacion').files[0];
             const elemento = {
                 id: document.getElementById('elementoId').value,
                 nombre: document.getElementById('elementoNombre').value,
                 cantidad: parseInt(document.getElementById('elementoCantidad').value),
                 estado: document.getElementById('elementoEstado').value,
                 categoria: document.getElementById('elementoCategoria').value,
-                descripcion: document.getElementById('elementoDescripcion').value
+                descripcion: document.getElementById('elementoDescripcion').value,
+                ubicacion: document.getElementById('elementoUbicacion').value
             };
 
+            // Mantener fotos existentes si es edición
+            const existingItem = inventario.find(i => i.id === elemento.id);
+            if (existingItem) {
+                elemento.foto = existingItem.foto || '';
+                elemento.fotoUbicacion = existingItem.fotoUbicacion || '';
+            }
+
+            // Leer foto del elemento si existe
             if (foto) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     elemento.foto = e.target.result;
-                    submitElemento(elemento);
+                    // Si también hay foto de ubicación, leerla
+                    if (fotoUbicacion) {
+                        const readerUbicacion = new FileReader();
+                        readerUbicacion.onload = function(e2) {
+                            elemento.fotoUbicacion = e2.target.result;
+                            submitElemento(elemento);
+                        };
+                        readerUbicacion.readAsDataURL(fotoUbicacion);
+                    } else {
+                        submitElemento(elemento);
+                    }
                 };
                 reader.readAsDataURL(foto);
+            } else if (fotoUbicacion) {
+                // Solo hay foto de ubicación
+                const readerUbicacion = new FileReader();
+                readerUbicacion.onload = function(e) {
+                    elemento.fotoUbicacion = e.target.result;
+                    submitElemento(elemento);
+                };
+                readerUbicacion.readAsDataURL(fotoUbicacion);
             } else {
-                // Mantener foto existente si es edición
-                const existingItem = inventario.find(i => i.id === elemento.id);
-                if (existingItem && existingItem.foto) {
-                    elemento.foto = existingItem.foto;
-                }
                 submitElemento(elemento);
             }
         }
@@ -2349,6 +2457,140 @@
             };
 
             reader.readAsText(file);
+        }
+
+        // ==================== ALTAS Y BAJAS ====================
+
+        function loadAltasBajas() {
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(data) {
+                    hideLoading();
+                    altasBajas = data;
+                    displayAltasBajas(data);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error al cargar altas/bajas: ' + error.message, 'error');
+                })
+                .getAltasBajas(currentLaboratorio);
+        }
+
+        function displayAltasBajas(registros) {
+            const container = document.getElementById('altasBajasTable');
+            if (!registros || registros.length === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">No hay registros de altas/bajas</p>';
+                return;
+            }
+
+            let html = `<table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Elemento</th>
+                        <th>Cantidad</th>
+                        <th>Motivo</th>
+                        <th>Usuario</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            registros.forEach(registro => {
+                const tipoBadge = registro.tipo === 'Alta' ? 'status-funcionamiento' : 'status-reparacion';
+                html += `<tr>
+                    <td>${registro.fecha}</td>
+                    <td><span class="status-badge ${tipoBadge}">${registro.tipo}</span></td>
+                    <td>${registro.elementoNombre}</td>
+                    <td>${registro.cantidad}</td>
+                    <td>${registro.motivo}</td>
+                    <td>${registro.usuario}</td>
+                    <td>
+                        <button class="action-btn delete" onclick="deleteAltaBajaRegistro('${registro.id}')">Eliminar</button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function openRegistrarAltaBajaModal() {
+            document.getElementById('altaBajaForm').reset();
+
+            // Cargar elementos en el select
+            const select = document.getElementById('altaBajaElemento');
+            select.innerHTML = '<option value="">Seleccione un elemento</option>';
+            inventario.forEach(item => {
+                select.innerHTML += `<option value="${item.id}" data-nombre="${item.nombre}">${item.nombre} (Stock: ${item.cantidad})</option>`;
+            });
+
+            document.getElementById('altaBajaModal').classList.add('active');
+        }
+
+        function closeAltaBajaModal() {
+            document.getElementById('altaBajaModal').classList.remove('active');
+        }
+
+        document.getElementById('altaBajaForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const tipo = document.getElementById('altaBajaTipo').value;
+            const selectElement = document.getElementById('altaBajaElemento');
+            const elementoId = selectElement.value;
+            const elementoNombre = selectElement.options[selectElement.selectedIndex].getAttribute('data-nombre');
+            const cantidad = parseInt(document.getElementById('altaBajaCantidad').value);
+            const motivo = document.getElementById('altaBajaMotivo').value;
+
+            if (!elementoId) {
+                showNotification('Debe seleccionar un elemento', 'error');
+                return;
+            }
+
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification('Alta/Baja registrada correctamente');
+                        closeAltaBajaModal();
+                        loadAltasBajas();
+                        // Recargar inventario para actualizar cantidades
+                        loadInventario();
+                        if (currentUser.rol === 'Preparador' || currentUser.rol === 'Admin') {
+                            loadEstadisticas();
+                        }
+                    } else {
+                        showNotification('Error al registrar: ' + result.error, 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .registrarAltaBaja(tipo, elementoId, elementoNombre, cantidad, motivo, currentUser.nombre, currentLaboratorio);
+        });
+
+        function deleteAltaBajaRegistro(id) {
+            if (!confirm('¿Está seguro de eliminar este registro?')) return;
+
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification('Registro eliminado correctamente');
+                        loadAltasBajas();
+                    } else {
+                        showNotification('Error al eliminar registro', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .deleteAltaBaja(id, currentLaboratorio);
         }
     </script>
 </body>
