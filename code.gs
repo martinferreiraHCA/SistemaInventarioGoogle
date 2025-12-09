@@ -18,6 +18,9 @@ const LABORATORIOS = {
   BIOQUIMICA: 'Bio-Química'
 };
 
+// Caché para mejorar rendimiento
+const cache = CacheService.getScriptCache();
+
 // Nombres de las hojas
 const SHEETS = {
   INVENTARIO: 'Inventario',
@@ -236,18 +239,29 @@ function getOrCreatePhotoFolder() {
 function uploadImage(base64Data, fileName) {
   try {
     if (!base64Data || !base64Data.startsWith('data:')) {
+      Logger.log('ERROR: Datos de imagen inválidos');
       return { success: false, error: 'Datos de imagen inválidos' };
     }
 
     const folder = getOrCreatePhotoFolder();
+    Logger.log('Carpeta de fotos: ' + folder.getName());
+
     const contentType = base64Data.match(/data:([^;]+);/)[1];
     const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, '');
     const blob = Utilities.newBlob(Utilities.base64Decode(base64Content), contentType, fileName);
     const file = folder.createFile(blob);
+
+    // Hacer el archivo público
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-    // Retornar URL de visualización directa
-    return { success: true, url: 'https://drive.google.com/uc?id=' + file.getId() };
+    const fileId = file.getId();
+    Logger.log('Imagen subida con ID: ' + fileId);
+
+    // Retornar URL de visualización directa - usar thumbnail para mejor rendimiento
+    const url = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w400';
+    Logger.log('URL generada: ' + url);
+
+    return { success: true, url: url, fileId: fileId };
   } catch (error) {
     Logger.log('Error al subir imagen: ' + error);
     return { success: false, error: error.toString() };
@@ -346,7 +360,17 @@ function cambiarPassword(email, oldPassword, newPassword) {
  */
 function getInventario(laboratorio) {
   try {
-    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    const lab = laboratorio || LABORATORIOS.STEM;
+
+    // Intentar obtener del caché primero
+    const cacheKey = 'inventario_' + lab;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      Logger.log('Inventario obtenido del caché para: ' + lab);
+      return JSON.parse(cached);
+    }
+
+    const ss = getSpreadsheetByLab(lab);
     if (!ss) {
       return [];
     }
@@ -373,9 +397,16 @@ function getInventario(laboratorio) {
           foto: data[i][6] || '',
           ubicacion: data[i][7] || '',
           fotoUbicacion: data[i][8] || '',
-          laboratorio: laboratorio || LABORATORIOS.STEM
+          laboratorio: lab
         });
       }
+    }
+
+    // Guardar en caché por 2 minutos (120 segundos)
+    try {
+      cache.put(cacheKey, JSON.stringify(elementos), 120);
+    } catch (e) {
+      Logger.log('Error al guardar caché: ' + e);
     }
 
     return elementos;
@@ -386,11 +417,33 @@ function getInventario(laboratorio) {
 }
 
 /**
+ * Invalida el caché de inventario para un laboratorio
+ */
+function clearInventarioCache(laboratorio) {
+  try {
+    const cacheKey = 'inventario_' + (laboratorio || LABORATORIOS.STEM);
+    cache.remove(cacheKey);
+    Logger.log('Caché invalidado para: ' + laboratorio);
+  } catch (error) {
+    Logger.log('Error al invalidar caché: ' + error);
+  }
+}
+
+/**
  * Obtiene las categorías de un laboratorio
  */
 function getCategorias(laboratorio) {
   try {
-    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    const lab = laboratorio || LABORATORIOS.STEM;
+
+    // Intentar obtener del caché primero - categorías se cachean por más tiempo
+    const cacheKey = 'categorias_' + lab;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    const ss = getSpreadsheetByLab(lab);
     if (!ss) {
       return [];
     }
@@ -410,6 +463,13 @@ function getCategorias(laboratorio) {
           nombre: data[i][1]
         });
       }
+    }
+
+    // Guardar en caché por 10 minutos (600 segundos)
+    try {
+      cache.put(cacheKey, JSON.stringify(categorias), 600);
+    } catch (e) {
+      Logger.log('Error al guardar caché de categorías: ' + e);
     }
 
     return categorias;
@@ -506,6 +566,9 @@ function saveElemento(elemento, laboratorio) {
       fotoUbicacionURL
     ]);
 
+    // Invalidar caché
+    clearInventarioCache(laboratorio);
+
     return { success: true };
   } catch (error) {
     Logger.log('Error al guardar elemento: ' + error);
@@ -597,6 +660,8 @@ function deleteElemento(id, laboratorio) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === id) {
         sheet.deleteRow(i + 1);
+        // Invalidar caché
+        clearInventarioCache(laboratorio);
         return { success: true };
       }
     }
