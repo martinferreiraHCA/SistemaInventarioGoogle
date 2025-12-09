@@ -1411,7 +1411,7 @@ function marcarSolicitudPreparada(data) {
  */
 function getUsuarios() {
   try {
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.USUARIOS);
 
     if (!sheet) {
@@ -1461,13 +1461,18 @@ function saveUsuario(usuario) {
       return { success: false, error: 'El rol debe ser Preparador o Docente' };
     }
 
+    // Validar laboratorio
+    if (!usuario.laboratorio || (usuario.laboratorio !== LABORATORIOS.STEM && usuario.laboratorio !== LABORATORIOS.BIOQUIMICA)) {
+      return { success: false, error: 'El laboratorio debe ser STEM o Bio-Química' };
+    }
+
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(usuario.email)) {
       return { success: false, error: 'Formato de email inválido' };
     }
 
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.USUARIOS);
 
     if (!sheet) {
@@ -1524,7 +1529,7 @@ function saveUsuario(usuario) {
  */
 function deleteUsuario(id) {
   try {
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const ss = SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEETS.USUARIOS);
     const data = sheet.getDataRange().getValues();
 
