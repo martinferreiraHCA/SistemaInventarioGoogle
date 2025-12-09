@@ -1200,37 +1200,35 @@
         </div>
     </div>
 
-    <!-- Modal: Registrar Alta/Baja -->
-    <div id="altaBajaModal" class="modal">
+    <!-- Modal: Registrar Alta/Baja Rápido -->
+    <div id="quickAltaBajaModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Registrar Alta o Baja</h2>
+                <h2 id="quickAltaBajaTitle">Alta de Inventario</h2>
             </div>
-            <form id="altaBajaForm">
+            <form id="quickAltaBajaForm">
+                <input type="hidden" id="quickAltaBajaTipo">
+                <input type="hidden" id="quickAltaBajaElementoId">
+
                 <div class="form-group">
-                    <label>Tipo de Movimiento *</label>
-                    <select id="altaBajaTipo" required>
-                        <option value="Alta">Alta (Ingreso de inventario)</option>
-                        <option value="Baja">Baja (Salida de inventario)</option>
-                    </select>
+                    <label>Elemento</label>
+                    <input type="text" id="quickAltaBajaElementoNombre" disabled style="background-color: #f5f5f5; font-weight: bold;">
                 </div>
                 <div class="form-group">
-                    <label>Elemento *</label>
-                    <select id="altaBajaElemento" required>
-                        <option value="">Seleccione un elemento</option>
-                    </select>
+                    <label>Stock Actual</label>
+                    <input type="text" id="quickAltaBajaStockActual" disabled style="background-color: #f5f5f5; font-weight: bold; font-size: 18px; text-align: center;">
                 </div>
                 <div class="form-group">
-                    <label>Cantidad *</label>
-                    <input type="number" id="altaBajaCantidad" min="1" required>
+                    <label>Cantidad a <span id="quickAltaBajaAccion">Ingresar</span> *</label>
+                    <input type="number" id="quickAltaBajaCantidad" min="1" required autofocus>
                 </div>
                 <div class="form-group">
                     <label>Motivo *</label>
-                    <textarea id="altaBajaMotivo" placeholder="Describa el motivo del movimiento" required></textarea>
+                    <textarea id="quickAltaBajaMotivo" placeholder="Ej: Compra nueva, Rotura, Préstamo, etc." required rows="3"></textarea>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn close-modal" onclick="closeAltaBajaModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Registrar</button>
+                    <button type="button" class="btn close-modal" onclick="closeQuickAltaBajaModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="quickAltaBajaSubmitBtn">Registrar</button>
                 </div>
             </form>
         </div>
@@ -1518,14 +1516,16 @@
 
                 html += `<tr>
                     <td>${fotoHtml}</td>
-                    <td>${item.nombre}</td>
-                    <td>${item.cantidad}</td>
+                    <td><strong>${item.nombre}</strong><br><small style="color: #999;">${item.descripcion || ''}</small></td>
+                    <td style="text-align: center;"><strong style="font-size: 16px;">${item.cantidad}</strong></td>
                     <td><span class="status-badge status-${item.estado.toLowerCase()}">${item.estado}</span></td>
                     <td>${item.categoria}</td>
                     <td>${ubicacionDisplay}${fotoUbicacionIcon}</td>
                     ${currentUser.rol === 'Preparador' || currentUser.rol === 'Admin' ? `
-                    <td>
-                        <button class="action-btn edit" onclick='editElemento(${JSON.stringify(item)})'>Editar</button>
+                    <td style="white-space: nowrap;">
+                        <button class="action-btn edit" onclick='editElemento(${JSON.stringify(item)})' style="background-color: var(--azul-principal); color: white;">Editar</button>
+                        <button class="action-btn" onclick='openQuickAltaModal(${JSON.stringify(item)})' style="background-color: var(--verde); color: white;" title="Registrar Alta">+ Alta</button>
+                        <button class="action-btn" onclick='openQuickBajaModal(${JSON.stringify(item)})' style="background-color: var(--amarillo); color: white;" title="Registrar Baja">- Baja</button>
                         <button class="action-btn delete" onclick="deleteElemento('${item.id}')">Eliminar</button>
                     </td>` : ''}
                 </tr>`;
@@ -1589,6 +1589,12 @@
 
         function closeElementoModal() {
             document.getElementById('elementoModal').classList.remove('active');
+            // Resetear botón de submit
+            const submitBtn = document.querySelector('#elementoForm button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Guardar';
+            }
         }
 
         function previewImage(event) {
@@ -1613,60 +1619,95 @@
             }
         }
 
-        function saveElemento(event) {
-            event.preventDefault();
-
-            const foto = document.getElementById('elementoFoto').files[0];
-            const fotoUbicacion = document.getElementById('elementoFotoUbicacion').files[0];
-            const elemento = {
-                id: document.getElementById('elementoId').value,
-                nombre: document.getElementById('elementoNombre').value,
-                cantidad: parseInt(document.getElementById('elementoCantidad').value),
-                estado: document.getElementById('elementoEstado').value,
-                categoria: document.getElementById('elementoCategoria').value,
-                descripcion: document.getElementById('elementoDescripcion').value,
-                ubicacion: document.getElementById('elementoUbicacion').value
-            };
-
-            // Mantener fotos existentes si es edición
-            const existingItem = inventario.find(i => i.id === elemento.id);
-            if (existingItem) {
-                elemento.foto = existingItem.foto || '';
-                elemento.fotoUbicacion = existingItem.fotoUbicacion || '';
-            }
-
-            // Leer foto del elemento si existe
-            if (foto) {
+        // Función para comprimir imagen antes de subirla
+        function compressImage(file, maxWidth = 800, quality = 0.7) {
+            return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    elemento.foto = e.target.result;
-                    // Si también hay foto de ubicación, leerla
-                    if (fotoUbicacion) {
-                        const readerUbicacion = new FileReader();
-                        readerUbicacion.onload = function(e2) {
-                            elemento.fotoUbicacion = e2.target.result;
-                            submitElemento(elemento);
-                        };
-                        readerUbicacion.readAsDataURL(fotoUbicacion);
-                    } else {
-                        submitElemento(elemento);
-                    }
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Redimensionar si es muy grande
+                        if (width > maxWidth) {
+                            height = (height * maxWidth) / width;
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Convertir a base64 con compresión
+                        const compressed = canvas.toDataURL('image/jpeg', quality);
+                        console.log('Imagen comprimida:', (file.size / 1024).toFixed(2) + 'KB → ' + (compressed.length * 0.75 / 1024).toFixed(2) + 'KB');
+                        resolve(compressed);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
                 };
-                reader.readAsDataURL(foto);
-            } else if (fotoUbicacion) {
-                // Solo hay foto de ubicación
-                const readerUbicacion = new FileReader();
-                readerUbicacion.onload = function(e) {
-                    elemento.fotoUbicacion = e.target.result;
-                    submitElemento(elemento);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function saveElemento(event) {
+            event.preventDefault();
+
+            // Obtener botón de submit y deshabilitarlo para prevenir duplicados
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            if (submitBtn.disabled) return; // Ya está procesando
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Guardando...';
+
+            try {
+                const foto = document.getElementById('elementoFoto').files[0];
+                const fotoUbicacion = document.getElementById('elementoFotoUbicacion').files[0];
+                const elemento = {
+                    id: document.getElementById('elementoId').value,
+                    nombre: document.getElementById('elementoNombre').value,
+                    cantidad: parseInt(document.getElementById('elementoCantidad').value),
+                    estado: document.getElementById('elementoEstado').value,
+                    categoria: document.getElementById('elementoCategoria').value,
+                    descripcion: document.getElementById('elementoDescripcion').value,
+                    ubicacion: document.getElementById('elementoUbicacion').value
                 };
-                readerUbicacion.readAsDataURL(fotoUbicacion);
-            } else {
-                submitElemento(elemento);
+
+                // Mantener fotos existentes si es edición
+                const existingItem = inventario.find(i => i.id === elemento.id);
+                if (existingItem) {
+                    elemento.foto = existingItem.foto || '';
+                    elemento.fotoUbicacion = existingItem.fotoUbicacion || '';
+                }
+
+                // Comprimir y procesar foto del elemento
+                if (foto) {
+                    console.log('Comprimiendo foto del elemento...');
+                    elemento.foto = await compressImage(foto, 800, 0.7);
+                }
+
+                // Comprimir y procesar foto de ubicación
+                if (fotoUbicacion) {
+                    console.log('Comprimiendo foto de ubicación...');
+                    elemento.fotoUbicacion = await compressImage(fotoUbicacion, 600, 0.7);
+                }
+
+                // Enviar al servidor
+                submitElemento(elemento, submitBtn);
+
+            } catch (error) {
+                console.error('Error al procesar imágenes:', error);
+                showNotification('Error al procesar imágenes', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Guardar';
             }
         }
 
-        function submitElemento(elemento) {
+        function submitElemento(elemento, submitBtn) {
             showLoading();
             google.script.run
                 .withSuccessHandler(function(result) {
@@ -1675,13 +1716,20 @@
                         showNotification('Elemento guardado correctamente');
                         closeElementoModal();
                         loadInventario();
+                        if (currentUser.rol === 'Preparador' || currentUser.rol === 'Admin') {
+                            loadEstadisticas();
+                        }
                     } else {
                         showNotification('Error al guardar elemento', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Guardar';
                     }
                 })
                 .withFailureHandler(function(error) {
                     hideLoading();
                     showNotification('Error: ' + error.message, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Guardar';
                 })
                 .saveElemento(elemento, currentLaboratorio);
         }
@@ -2471,6 +2519,85 @@
         }
 
         // ==================== ALTAS Y BAJAS ====================
+
+        // Modales rápidos de Alta/Baja desde inventario
+        function openQuickAltaModal(item) {
+            document.getElementById('quickAltaBajaTitle').textContent = '➕ Alta de Inventario';
+            document.getElementById('quickAltaBajaTipo').value = 'Alta';
+            document.getElementById('quickAltaBajaElementoId').value = item.id;
+            document.getElementById('quickAltaBajaElementoNombre').value = item.nombre;
+            document.getElementById('quickAltaBajaStockActual').value = item.cantidad + ' unidades';
+            document.getElementById('quickAltaBajaAccion').textContent = 'Ingresar';
+            document.getElementById('quickAltaBajaCantidad').value = '';
+            document.getElementById('quickAltaBajaMotivo').value = '';
+            document.getElementById('quickAltaBajaModal').classList.add('active');
+            setTimeout(() => document.getElementById('quickAltaBajaCantidad').focus(), 100);
+        }
+
+        function openQuickBajaModal(item) {
+            document.getElementById('quickAltaBajaTitle').textContent = '➖ Baja de Inventario';
+            document.getElementById('quickAltaBajaTipo').value = 'Baja';
+            document.getElementById('quickAltaBajaElementoId').value = item.id;
+            document.getElementById('quickAltaBajaElementoNombre').value = item.nombre;
+            document.getElementById('quickAltaBajaStockActual').value = item.cantidad + ' unidades';
+            document.getElementById('quickAltaBajaAccion').textContent = 'Retirar';
+            document.getElementById('quickAltaBajaCantidad').value = '';
+            document.getElementById('quickAltaBajaMotivo').value = '';
+            document.getElementById('quickAltaBajaModal').classList.add('active');
+            setTimeout(() => document.getElementById('quickAltaBajaCantidad').focus(), 100);
+        }
+
+        function closeQuickAltaBajaModal() {
+            document.getElementById('quickAltaBajaModal').classList.remove('active');
+            document.getElementById('quickAltaBajaForm').reset();
+        }
+
+        // Event listener para el formulario rápido
+        document.addEventListener('DOMContentLoaded', function() {
+            const quickForm = document.getElementById('quickAltaBajaForm');
+            if (quickForm) {
+                quickForm.addEventListener('submit', function(event) {
+                    event.preventDefault();
+
+                    const tipo = document.getElementById('quickAltaBajaTipo').value;
+                    const elementoId = document.getElementById('quickAltaBajaElementoId').value;
+                    const elementoNombre = document.getElementById('quickAltaBajaElementoNombre').value;
+                    const cantidad = parseInt(document.getElementById('quickAltaBajaCantidad').value);
+                    const motivo = document.getElementById('quickAltaBajaMotivo').value;
+                    const submitBtn = document.getElementById('quickAltaBajaSubmitBtn');
+
+                    // Deshabilitar botón para prevenir dobles clics
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Guardando...';
+
+                    showLoading();
+                    google.script.run
+                        .withSuccessHandler(function(result) {
+                            hideLoading();
+                            if (result.success) {
+                                showNotification(tipo + ' registrada correctamente');
+                                closeQuickAltaBajaModal();
+                                loadInventario();
+                                loadAltasBajas();
+                                if (currentUser.rol === 'Preparador' || currentUser.rol === 'Admin') {
+                                    loadEstadisticas();
+                                }
+                            } else {
+                                showNotification('Error al registrar: ' + result.error, 'error');
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = 'Registrar';
+                            }
+                        })
+                        .withFailureHandler(function(error) {
+                            hideLoading();
+                            showNotification('Error: ' + error.message, 'error');
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Registrar';
+                        })
+                        .registrarAltaBaja(tipo, elementoId, elementoNombre, cantidad, motivo, currentUser.nombre, currentLaboratorio);
+                });
+            }
+        });
 
         function loadAltasBajas() {
             showLoading();
