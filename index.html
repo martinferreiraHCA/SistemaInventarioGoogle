@@ -973,6 +973,18 @@
                     <div id="altasBajasTable"></div>
                 </div>
             </div>
+
+            <!-- Vista: Categorías -->
+            <div id="categoriasView" class="view">
+                <div class="header">
+                    <h1>Gestión de Categorías</h1>
+                    <p style="margin-top: 8px; color: #666; font-size: 14px;">Administra las categorías del inventario. Los cambios se reflejan automáticamente en el inventario.</p>
+                </div>
+                <div class="table-container">
+                    <button class="btn btn-primary" onclick="openAddCategoriaModal()" style="margin-bottom: 20px;">➕ Nueva Categoría</button>
+                    <div id="categoriasTable"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1002,15 +1014,11 @@
                 <div class="form-group">
                     <label>Categoría *</label>
                     <select id="elementoCategoria" required>
-                        <option value="Mecánica">Mecánica</option>
-                        <option value="Electromagnetismo">Electromagnetismo</option>
-                        <option value="Óptica">Óptica</option>
-                        <option value="Termodinámica">Termodinámica</option>
-                        <option value="Ondas y Acústica">Ondas y Acústica</option>
-                        <option value="Física Moderna">Física Moderna</option>
-                        <option value="Electrónica">Electrónica</option>
-                        <option value="Otros">Otros</option>
+                        <!-- Las categorías se cargan dinámicamente -->
                     </select>
+                    <small style="color: #999; display: block; margin-top: 4px;">
+                        Gestiona categorías desde el menú "Categorías"
+                    </small>
                 </div>
                 <div class="form-group">
                     <label>Descripción</label>
@@ -1262,6 +1270,29 @@
         </div>
     </div>
 
+    <!-- Modal: Categoría -->
+    <div id="categoriaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="categoriaModalTitle">Nueva Categoría</h2>
+            </div>
+            <form id="categoriaForm">
+                <input type="hidden" id="categoriaId">
+                <div class="form-group">
+                    <label>Nombre de la Categoría *</label>
+                    <input type="text" id="categoriaNombre" placeholder="Ej: Mecánica, Química Orgánica, etc." required autofocus>
+                    <small style="color: #999; display: block; margin-top: 4px;">
+                        Los elementos del inventario se actualizarán automáticamente si cambias el nombre.
+                    </small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn close-modal" onclick="closeCategoriaModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Variables globales
         let currentUser = null;
@@ -1273,6 +1304,7 @@
         let usuarios = [];
         let estadisticas = null;
         let altasBajas = [];
+        let categorias = [];
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
@@ -1429,6 +1461,7 @@
             applyLaboratorioColors();
 
             loadMenu();
+            loadCategorias(); // Cargar categorías para el selector dinámico
             loadInventario();
             if (currentUser.rol === 'Preparador' || currentUser.rol === 'Admin') {
                 loadEstadisticas();
@@ -1464,6 +1497,7 @@
                 showNotification('Cambiado a ' + currentLaboratorio);
 
                 // Recargar datos del nuevo laboratorio
+                loadCategorias(); // Cargar categorías del nuevo laboratorio
                 loadInventario();
                 if (currentUser.rol === 'Admin' || currentUser.rol === 'Preparador') {
                     loadEstadisticas();
@@ -1482,6 +1516,7 @@
             if (currentUser.rol === 'Admin' || currentUser.rol === 'Preparador') {
                 menuItems = [
                     { id: 'inventario', text: 'Inventario', view: 'inventarioView' },
+                    { id: 'categorias', text: 'Categorías', view: 'categoriasView' },
                     { id: 'altasBajas', text: 'Altas y Bajas', view: 'altasBajasView' },
                     { id: 'bitacora', text: 'Bitácora', view: 'bitacoraView' },
                     { id: 'solicitudes', text: 'Solicitudes', view: 'gestionSolicitudesView' },
@@ -2465,6 +2500,139 @@
                     showNotification('Error: ' + error.message, 'error');
                 })
                 .deleteUsuario(id);
+        }
+
+        // Categorías
+        function loadCategorias() {
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(data) {
+                    hideLoading();
+                    categorias = data;
+                    displayCategorias(data);
+                    // También actualizar el selector de categorías en el modal de elemento
+                    updateCategoriasSelector();
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error al cargar categorías: ' + error.message, 'error');
+                })
+                .getCategorias(currentLaboratorio);
+        }
+
+        function displayCategorias(items) {
+            const container = document.getElementById('categoriasTable');
+            if (!items || items.length === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">No hay categorías. Agrega una nueva categoría para comenzar.</p>';
+                return;
+            }
+
+            let html = `<table>
+                <thead>
+                    <tr>
+                        <th>Nombre de la Categoría</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            items.forEach(item => {
+                html += `<tr>
+                    <td><strong>${item.nombre}</strong></td>
+                    <td>
+                        <button class="action-btn edit" onclick='editCategoria(${JSON.stringify(item)})' style="background-color: var(--azul-principal); color: white;">Editar</button>
+                        <button class="action-btn delete" onclick="deleteCategoria('${item.id}')">Eliminar</button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function updateCategoriasSelector() {
+            const selector = document.getElementById('elementoCategoria');
+            if (!selector) return;
+
+            // Limpiar opciones actuales
+            selector.innerHTML = '';
+
+            // Agregar categorías dinámicamente
+            categorias.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.nombre;
+                option.textContent = cat.nombre;
+                selector.appendChild(option);
+            });
+        }
+
+        function openAddCategoriaModal() {
+            document.getElementById('categoriaModalTitle').textContent = 'Nueva Categoría';
+            document.getElementById('categoriaForm').reset();
+            document.getElementById('categoriaId').value = '';
+            document.getElementById('categoriaModal').classList.add('active');
+            setTimeout(() => document.getElementById('categoriaNombre').focus(), 100);
+        }
+
+        function closeCategoriaModal() {
+            document.getElementById('categoriaModal').classList.remove('active');
+        }
+
+        function editCategoria(categoria) {
+            document.getElementById('categoriaModalTitle').textContent = 'Editar Categoría';
+            document.getElementById('categoriaId').value = categoria.id;
+            document.getElementById('categoriaNombre').value = categoria.nombre;
+            document.getElementById('categoriaModal').classList.add('active');
+            setTimeout(() => document.getElementById('categoriaNombre').focus(), 100);
+        }
+
+        document.getElementById('categoriaForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const categoria = {
+                id: document.getElementById('categoriaId').value || undefined,
+                nombre: document.getElementById('categoriaNombre').value
+            };
+
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification('Categoría guardada correctamente');
+                        closeCategoriaModal();
+                        loadCategorias();
+                        loadInventario(); // Recargar inventario para reflejar cambios
+                    } else {
+                        showNotification('Error: ' + (result.error || 'Error al guardar categoría'), 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .saveCategoria(categoria, currentLaboratorio);
+        });
+
+        function deleteCategoria(id) {
+            if (!confirm('¿Está seguro de eliminar esta categoría?\n\nNOTA: No se puede eliminar si hay elementos que la utilizan.')) return;
+
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification('Categoría eliminada correctamente');
+                        loadCategorias();
+                    } else {
+                        showNotification('Error: ' + (result.error || 'Error al eliminar categoría'), 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .deleteCategoria(id, currentLaboratorio);
         }
 
         // Utilidades
