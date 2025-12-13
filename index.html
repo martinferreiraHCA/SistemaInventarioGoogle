@@ -850,12 +850,13 @@
         <!-- Menú Lateral -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h2>Laboratorio</h2>
+                <h2 id="labTitle">Laboratorio</h2>
                 <div class="user-info" id="userInfo"></div>
                 <div id="labSelector" style="margin-top: 16px; display: none;">
-                    <select id="labSelect" style="width: 100%; padding: 8px 12px; border: 1.5px solid rgba(255,255,255,0.2); background-color: rgba(255,255,255,0.1); color: var(--blanco); font-weight: 500; font-size: 13px;" onchange="changeLaboratorio()">
-                        <option value="STEM">Laboratorio STEM</option>
-                        <option value="Bio-Química">Laboratorio Bio-Química</option>
+                    <label style="font-size: 11px; opacity: 0.8; display: block; margin-bottom: 6px;">Cambiar Laboratorio:</label>
+                    <select id="labSelect" style="width: 100%; padding: 8px 12px; border: 1.5px solid rgba(255,255,255,0.2); background-color: rgba(255,255,255,0.1); color: var(--blanco); font-weight: 500; font-size: 13px; border-radius: 6px;" onchange="changeLaboratorio()">
+                        <option value="STEM">🔬 Laboratorio STEM</option>
+                        <option value="Bio-Química">🧪 Laboratorio Bio-Química</option>
                     </select>
                 </div>
             </div>
@@ -1382,9 +1383,37 @@
             showNotification('Sesión cerrada correctamente');
         }
 
+        // Aplicar colores según el laboratorio
+        function applyLaboratorioColors() {
+            const root = document.documentElement;
+
+            if (currentLaboratorio === 'Bio-Química') {
+                // Colores para Bio-Química (Verde)
+                root.style.setProperty('--azul-principal', '#A4B01D');
+                root.style.setProperty('--azul-oscuro', '#8A9619');
+                root.style.setProperty('--azul-claro', '#B8C43F');
+            } else {
+                // Colores para STEM (Azul)
+                root.style.setProperty('--azul-principal', '#242B59');
+                root.style.setProperty('--azul-oscuro', '#1a1f3a');
+                root.style.setProperty('--azul-claro', '#2f3a6b');
+            }
+        }
+
         // Inicializar sistema
         function initializeSystem() {
-            document.getElementById('userInfo').textContent = currentUser.nombre + ' (' + currentUser.rol + ')';
+            // Mostrar nombre, rol y laboratorio del usuario
+            const labText = currentUser.laboratorio || currentLaboratorio;
+            const labIcon = currentLaboratorio === 'Bio-Química' ? '🧪' : '🔬';
+
+            // Actualizar título del sidebar
+            document.getElementById('labTitle').innerHTML = `${labIcon} ${labText}`;
+
+            // Actualizar info del usuario
+            document.getElementById('userInfo').innerHTML = `
+                <div style="font-weight: 600; font-size: 14px;">${currentUser.nombre}</div>
+                <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">${currentUser.rol}</div>
+            `;
 
             // Mostrar selector de laboratorio solo para Admin
             if (currentUser.rol === 'Admin') {
@@ -1395,6 +1424,9 @@
                 // Para preparadores y docentes, usar su laboratorio asignado
                 currentLaboratorio = currentUser.laboratorio || 'STEM';
             }
+
+            // Aplicar colores del laboratorio
+            applyLaboratorioColors();
 
             loadMenu();
             loadInventario();
@@ -1415,7 +1447,22 @@
             if (newLab !== currentLaboratorio) {
                 currentLaboratorio = newLab;
                 saveSession(); // Guardar en localStorage
+
+                // Aplicar colores del nuevo laboratorio
+                applyLaboratorioColors();
+
+                // Actualizar título del sidebar
+                const labIcon = currentLaboratorio === 'Bio-Química' ? '🧪' : '🔬';
+                document.getElementById('labTitle').innerHTML = `${labIcon} ${currentLaboratorio}`;
+
+                // Actualizar info del usuario
+                document.getElementById('userInfo').innerHTML = `
+                    <div style="font-weight: 600; font-size: 14px;">${currentUser.nombre}</div>
+                    <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">${currentUser.rol}</div>
+                `;
+
                 showNotification('Cambiado a ' + currentLaboratorio);
+
                 // Recargar datos del nuevo laboratorio
                 loadInventario();
                 if (currentUser.rol === 'Admin' || currentUser.rol === 'Preparador') {
