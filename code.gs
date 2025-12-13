@@ -268,6 +268,56 @@ function uploadImage(base64Data, fileName) {
   }
 }
 
+/**
+ * Sube un documento a Drive (base64) - PDF, Word, etc.
+ */
+function uploadDocument(base64Data, fileName) {
+  try {
+    if (!base64Data || !base64Data.startsWith('data:')) {
+      Logger.log('ERROR: Datos de documento inválidos');
+      return { success: false, error: 'Datos de documento inválidos' };
+    }
+
+    const folder = getOrCreatePhotoFolder();
+    Logger.log('Carpeta de documentos: ' + folder.getName());
+
+    // Extraer tipo de contenido y datos base64
+    const matches = base64Data.match(/data:([^;]+);base64,(.+)/);
+    if (!matches) {
+      return { success: false, error: 'Formato de documento inválido' };
+    }
+
+    const contentType = matches[1];
+    const base64Content = matches[2];
+
+    // Determinar extensión según tipo de contenido
+    let extension = '.pdf';
+    if (contentType.includes('word') || contentType.includes('document')) {
+      extension = '.docx';
+    } else if (contentType.includes('text')) {
+      extension = '.txt';
+    }
+
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64Content), contentType, fileName + extension);
+    const file = folder.createFile(blob);
+
+    // Hacer el archivo público
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    const fileId = file.getId();
+    Logger.log('Documento subido con ID: ' + fileId);
+
+    // Retornar URL de visualización
+    const url = 'https://drive.google.com/file/d/' + fileId + '/view';
+    Logger.log('URL generada: ' + url);
+
+    return { success: true, url: url, fileId: fileId };
+  } catch (error) {
+    Logger.log('Error al subir documento: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
 // ==================== AUTENTICACIÓN ====================
 
 /**
@@ -1219,11 +1269,12 @@ function parseCSVLine(line) {
 // ==================== SOLICITUDES ====================
 
 /**
- * Obtiene todas las solicitudes
+ * Obtiene todas las solicitudes de un laboratorio específico
  */
-function getAllSolicitudes() {
+function getAllSolicitudes(laboratorio) {
   try {
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
     let sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
 
     if (!sheet) {
@@ -1248,7 +1299,10 @@ function getAllSolicitudes() {
           docenteEmail: data[i][8],
           estado: data[i][9] || 'Pendiente',
           fotoPreparada: data[i][10] || '',
-          observacionesPreparador: data[i][11] || ''
+          observacionesPreparador: data[i][11] || '',
+          laboratorio: data[i][12] || lab,
+          documentoPractica: data[i][13] || '',
+          imagenesPractica: data[i][14] || ''
         });
       }
     }
@@ -1276,7 +1330,7 @@ function getSolicitudesByDocente(email) {
 /**
  * Guarda una nueva solicitud
  */
-function saveSolicitud(solicitud) {
+function saveSolicitud(solicitud, laboratorio) {
   try {
     // Validar datos requeridos
     if (!solicitud.nombre || solicitud.nombre.trim() === '') {
@@ -1296,12 +1350,31 @@ function saveSolicitud(solicitud) {
       return { success: false, error: 'La fecha de inicio debe ser anterior a la fecha de fin' };
     }
 
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
     let sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
 
     if (!sheet) {
       initializeSheets();
       sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
+    }
+
+    // Subir documento si existe
+    let documentoURL = '';
+    if (solicitud.documentoPractica) {
+      const docResult = uploadDocument(solicitud.documentoPractica, solicitud.nombre + '_documento');
+      if (docResult.success) {
+        documentoURL = docResult.url;
+      }
+    }
+
+    // Subir imágenes si existen
+    let imagenesURLs = '';
+    if (solicitud.imagenesPractica) {
+      const imgResult = uploadImage(solicitud.imagenesPractica, solicitud.nombre + '_imagen');
+      if (imgResult.success) {
+        imagenesURLs = imgResult.url;
+      }
     }
 
     const id = Utilities.getUuid();
@@ -1317,7 +1390,10 @@ function saveSolicitud(solicitud) {
       solicitud.docenteEmail,
       'Pendiente',
       '',
-      ''
+      '',
+      lab,
+      documentoURL,
+      imagenesURLs
     ]);
 
     // Notificar a los preparadores
@@ -1353,9 +1429,10 @@ function notificarNuevaSolicitud(solicitud) {
 /**
  * Marca una solicitud como preparada
  */
-function marcarSolicitudPreparada(data) {
+function marcarSolicitudPreparada(data, laboratorio) {
   try {
-    const ss = SpreadsheetApp.openById(INVENTARIO_SPREADSHEET_ID);
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
     const sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
     const sheetData = sheet.getDataRange().getValues();
 
