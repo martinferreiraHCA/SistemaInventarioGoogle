@@ -745,7 +745,8 @@ function saveCategoria(categoria, laboratorio) {
       return { success: false, error: 'El nombre es requerido' };
     }
 
-    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
     if (!ss) {
       return { success: false, error: 'Laboratorio inválido' };
     }
@@ -756,15 +757,27 @@ function saveCategoria(categoria, laboratorio) {
     }
 
     const data = sheet.getDataRange().getValues();
+    let nombreAnterior = null;
 
     // Si tiene ID, actualizar
     if (categoria.id) {
       for (let i = 1; i < data.length; i++) {
         if (data[i][0] === categoria.id) {
+          nombreAnterior = data[i][1]; // Guardar nombre anterior
           sheet.getRange(i + 1, 1, 1, 2).setValues([[
             categoria.id,
             categoria.nombre.trim()
           ]]);
+
+          // Si se cambió el nombre, actualizar en el inventario
+          if (nombreAnterior !== categoria.nombre.trim()) {
+            updateInventarioCategorias(nombreAnterior, categoria.nombre.trim(), lab);
+          }
+
+          // Invalidar caché
+          clearCategoriasCache(lab);
+          clearInventarioCache(lab);
+
           return { success: true };
         }
       }
@@ -774,6 +787,9 @@ function saveCategoria(categoria, laboratorio) {
     const id = Utilities.getUuid();
     sheet.appendRow([id, categoria.nombre.trim()]);
 
+    // Invalidar caché
+    clearCategoriasCache(lab);
+
     return { success: true };
   } catch (error) {
     Logger.log('Error al guardar categoría: ' + error);
@@ -782,21 +798,94 @@ function saveCategoria(categoria, laboratorio) {
 }
 
 /**
+ * Actualiza la categoría en todos los elementos del inventario
+ */
+function updateInventarioCategorias(nombreAnterior, nombreNuevo, laboratorio) {
+  try {
+    const ss = getSpreadsheetByLab(laboratorio);
+    const inventarioSheet = ss.getSheetByName(SHEETS.INVENTARIO);
+
+    if (!inventarioSheet) {
+      return;
+    }
+
+    const data = inventarioSheet.getDataRange().getValues();
+
+    // Actualizar todos los elementos que tengan la categoría antigua
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][4] === nombreAnterior) { // Columna 5 es Categoria (índice 4)
+        inventarioSheet.getRange(i + 1, 5).setValue(nombreNuevo);
+      }
+    }
+
+    Logger.log('Categorías actualizadas en inventario: ' + nombreAnterior + ' -> ' + nombreNuevo);
+  } catch (error) {
+    Logger.log('Error al actualizar categorías en inventario: ' + error);
+  }
+}
+
+/**
+ * Invalida el caché de categorías
+ */
+function clearCategoriasCache(laboratorio) {
+  try {
+    const cacheKey = 'categorias_' + (laboratorio || LABORATORIOS.STEM);
+    cache.remove(cacheKey);
+  } catch (error) {
+    Logger.log('Error al invalidar caché de categorías: ' + error);
+  }
+}
+
+/**
  * Elimina una categoría
  */
 function deleteCategoria(id, laboratorio) {
   try {
-    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
     if (!ss) {
       return { success: false, error: 'Laboratorio inválido' };
     }
 
-    const sheet = ss.getSheetByName(SHEETS.CATEGORIAS);
-    const data = sheet.getDataRange().getValues();
+    const categoriasSheet = ss.getSheetByName(SHEETS.CATEGORIAS);
+    const data = categoriasSheet.getDataRange().getValues();
 
+    let nombreCategoria = null;
+
+    // Buscar la categoría y su nombre
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === id) {
-        sheet.deleteRow(i + 1);
+        nombreCategoria = data[i][1];
+        break;
+      }
+    }
+
+    if (!nombreCategoria) {
+      return { success: false, error: 'Categoría no encontrada' };
+    }
+
+    // Verificar si la categoría está en uso en el inventario
+    const inventarioSheet = ss.getSheetByName(SHEETS.INVENTARIO);
+    if (inventarioSheet) {
+      const inventarioData = inventarioSheet.getDataRange().getValues();
+      for (let i = 1; i < inventarioData.length; i++) {
+        if (inventarioData[i][4] === nombreCategoria) { // Columna 5 es Categoria
+          return {
+            success: false,
+            error: 'No se puede eliminar esta categoría porque hay elementos que la utilizan. Primero cambia la categoría de esos elementos.'
+          };
+        }
+      }
+    }
+
+    // Si no está en uso, eliminar
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === id) {
+        categoriasSheet.deleteRow(i + 1);
+
+        // Invalidar caché
+        clearCategoriasCache(lab);
+
         return { success: true };
       }
     }
