@@ -1105,9 +1105,19 @@
                     <label>Materiales Adicionales</label>
                     <textarea id="solicitudMaterialesExtra" placeholder="Describa materiales adicionales necesarios"></textarea>
                 </div>
+                <div class="form-group">
+                    <label>Documento de la Práctica (PDF, Word, etc.)</label>
+                    <input type="file" id="solicitudDocumento" accept=".pdf,.doc,.docx,.txt">
+                    <small style="color: #999;">Opcional: Sube el documento/planificación de la práctica</small>
+                </div>
+                <div class="form-group">
+                    <label>Imágenes de Referencia</label>
+                    <input type="file" id="solicitudImagenes" accept="image/*">
+                    <small style="color: #999;">Opcional: Imágenes de referencia del montaje</small>
+                </div>
                 <div class="modal-actions">
                     <button type="button" class="btn close-modal" onclick="closeSolicitudModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Enviar Solicitud</button>
+                    <button type="submit" class="btn btn-primary" id="solicitudSubmitBtn">Enviar Solicitud</button>
                 </div>
             </form>
         </div>
@@ -1662,6 +1672,19 @@
             });
         }
 
+        // Función para convertir archivos (documentos) a base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    console.log('Archivo convertido a base64:', file.name, (file.size / 1024).toFixed(2) + 'KB');
+                    resolve(e.target.result);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
         async function saveElemento(event) {
             event.preventDefault();
 
@@ -1957,7 +1980,7 @@
                     hideLoading();
                     showNotification('Error al cargar solicitudes: ' + error.message, 'error');
                 })
-                .getAllSolicitudes();
+                .getAllSolicitudes(currentLaboratorio);
         }
 
         function displayMisSolicitudes(items) {
@@ -1976,6 +1999,8 @@
                     <div class="request-info"><strong>Fecha Necesaria:</strong> ${item.fechaNecesaria}</div>
                     <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
                     ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
+                    ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
+                    ${item.imagenesPractica ? `<div class="request-info"><strong>🖼️ Imagen:</strong> <a href="${item.imagenesPractica}" target="_blank" style="color: var(--azul-principal);">Ver imagen</a></div>` : ''}
                     <span class="request-status ${item.estado.toLowerCase()}">${item.estado}</span>
                     ${item.fotoPreparada ? `<div style="margin-top: 10px;"><img src="${item.fotoPreparada}" style="max-width: 100%;"></div>` : ''}
                     ${item.observacionesPreparador ? `<div class="request-info" style="margin-top: 10px;"><strong>Observaciones del preparador:</strong> ${item.observacionesPreparador}</div>` : ''}
@@ -2002,6 +2027,8 @@
                     <div class="request-info"><strong>Fecha Necesaria:</strong> ${item.fechaNecesaria}</div>
                     <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
                     ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
+                    ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
+                    ${item.imagenesPractica ? `<div class="request-info"><strong>🖼️ Imagen:</strong> <a href="${item.imagenesPractica}" target="_blank" style="color: var(--azul-principal);">Ver imagen</a></div>` : ''}
                     <span class="request-status ${item.estado.toLowerCase()}">${item.estado}</span>
                     ${item.estado === 'Pendiente' ? `<br><button class="btn btn-success" style="margin-top: 10px;" onclick='openPrepararModal(${JSON.stringify(item).replace(/'/g, "&apos;")})'>Marcar como Preparada</button>` : ''}
                     ${item.fotoPreparada ? `<div style="margin-top: 10px;"><img src="${item.fotoPreparada}" style="max-width: 100%;"></div>` : ''}
@@ -2056,52 +2083,84 @@
             });
         }
 
-        function saveSolicitud(event) {
+        async function saveSolicitud(event) {
             event.preventDefault();
 
-            const materialesSeleccionados = [];
-            inventario.forEach(item => {
-                const checkbox = document.getElementById(`mat_${item.id}`);
-                if (checkbox && checkbox.checked) {
-                    const cantidad = document.getElementById(`cant_${item.id}`).value;
-                    materialesSeleccionados.push(`${item.nombre} (${cantidad || 1})`);
-                }
-            });
+            const submitBtn = document.getElementById('solicitudSubmitBtn');
+            if (submitBtn.disabled) return; // Prevenir envíos múltiples
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Enviando...';
 
-            if (materialesSeleccionados.length === 0 && !document.getElementById('solicitudMaterialesExtra').value) {
-                showNotification('Debe seleccionar al menos un material o describir materiales adicionales', 'error');
-                return;
-            }
-
-            const solicitud = {
-                nombre: document.getElementById('solicitudNombre').value,
-                fechaInicio: document.getElementById('solicitudFechaInicio').value,
-                fechaFin: document.getElementById('solicitudFechaFin').value,
-                fechaNecesaria: document.getElementById('solicitudFechaNecesaria').value,
-                materiales: materialesSeleccionados.join(', '),
-                materialesExtra: document.getElementById('solicitudMaterialesExtra').value,
-                docente: currentUser.nombre,
-                docenteEmail: currentUser.email,
-                estado: 'Pendiente'
-            };
-
-            showLoading();
-            google.script.run
-                .withSuccessHandler(function(result) {
-                    hideLoading();
-                    if (result.success) {
-                        showNotification('Solicitud enviada correctamente');
-                        closeSolicitudModal();
-                        loadMisSolicitudes();
-                    } else {
-                        showNotification('Error al enviar solicitud', 'error');
+            try {
+                const materialesSeleccionados = [];
+                inventario.forEach(item => {
+                    const checkbox = document.getElementById(`mat_${item.id}`);
+                    if (checkbox && checkbox.checked) {
+                        const cantidad = document.getElementById(`cant_${item.id}`).value;
+                        materialesSeleccionados.push(`${item.nombre} (${cantidad || 1})`);
                     }
-                })
-                .withFailureHandler(function(error) {
-                    hideLoading();
-                    showNotification('Error: ' + error.message, 'error');
-                })
-                .saveSolicitud(solicitud);
+                });
+
+                if (materialesSeleccionados.length === 0 && !document.getElementById('solicitudMaterialesExtra').value) {
+                    showNotification('Debe seleccionar al menos un material o describir materiales adicionales', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Enviar Solicitud';
+                    return;
+                }
+
+                const solicitud = {
+                    nombre: document.getElementById('solicitudNombre').value,
+                    fechaInicio: document.getElementById('solicitudFechaInicio').value,
+                    fechaFin: document.getElementById('solicitudFechaFin').value,
+                    fechaNecesaria: document.getElementById('solicitudFechaNecesaria').value,
+                    materiales: materialesSeleccionados.join(', '),
+                    materialesExtra: document.getElementById('solicitudMaterialesExtra').value,
+                    docente: currentUser.nombre,
+                    docenteEmail: currentUser.email,
+                    estado: 'Pendiente'
+                };
+
+                // Procesar documento si existe
+                const documentoFile = document.getElementById('solicitudDocumento').files[0];
+                if (documentoFile) {
+                    console.log('Procesando documento:', documentoFile.name);
+                    solicitud.documentoPractica = await fileToBase64(documentoFile);
+                }
+
+                // Procesar imágenes si existe
+                const imagenesFile = document.getElementById('solicitudImagenes').files[0];
+                if (imagenesFile) {
+                    console.log('Comprimiendo imagen:', imagenesFile.name);
+                    solicitud.imagenesPractica = await compressImage(imagenesFile, 800, 0.7);
+                }
+
+                showLoading();
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        hideLoading();
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Enviar Solicitud';
+                        if (result.success) {
+                            showNotification('Solicitud enviada correctamente');
+                            closeSolicitudModal();
+                            loadMisSolicitudes();
+                        } else {
+                            showNotification('Error al enviar solicitud: ' + (result.error || ''), 'error');
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        hideLoading();
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Enviar Solicitud';
+                        showNotification('Error: ' + error.message, 'error');
+                    })
+                    .saveSolicitud(solicitud, currentLaboratorio);
+            } catch (error) {
+                console.error('Error al procesar solicitud:', error);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Enviar Solicitud';
+                showNotification('Error al procesar archivos: ' + error.message, 'error');
+            }
         }
 
         function openPrepararModal(solicitud) {
@@ -2168,7 +2227,7 @@
                     hideLoading();
                     showNotification('Error: ' + error.message, 'error');
                 })
-                .marcarSolicitudPreparada(data);
+                .marcarSolicitudPreparada(data, currentLaboratorio);
         }
 
         // Usuarios
