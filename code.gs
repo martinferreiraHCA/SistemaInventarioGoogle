@@ -198,21 +198,34 @@ function initializeBitacoraSheet() {
   let bitacoraSheet = bitacoraSS.getSheetByName(SHEETS.BITACORA);
   if (!bitacoraSheet) {
     bitacoraSheet = bitacoraSS.insertSheet(SHEETS.BITACORA);
-    bitacoraSheet.getRange(1, 1, 1, 8).setValues([[
-      'ID', 'Fecha', 'Practica', 'Items', 'Usuario', 'Observaciones', 'Preparador', 'Laboratorio'
+    bitacoraSheet.getRange(1, 1, 1, 9).setValues([[
+      'ID', 'Fecha', 'Tipo', 'Practica', 'Items', 'Usuario', 'Observaciones', 'Preparador', 'Laboratorio'
     ]]);
-    bitacoraSheet.getRange(1, 1, 1, 8).setFontWeight('bold');
+    bitacoraSheet.getRange(1, 1, 1, 9).setFontWeight('bold');
     bitacoraSheet.setFrozenRows(1);
   } else {
-    // Si ya existe, verificar si tiene columna Laboratorio
+    // Verificar si tiene columna Tipo
     const headers = bitacoraSheet.getRange(1, 1, 1, bitacoraSheet.getLastColumn()).getValues()[0];
+    if (headers.indexOf('Tipo') === -1) {
+      // Insertar columna Tipo en posición 3 (después de Fecha)
+      bitacoraSheet.insertColumnAfter(2);
+      bitacoraSheet.getRange(1, 3).setValue('Tipo');
+      // Asignar "Práctica Preparada" por defecto a entradas existentes
+      const lastRow = bitacoraSheet.getLastRow();
+      if (lastRow > 1) {
+        for (let i = 2; i <= lastRow; i++) {
+          bitacoraSheet.getRange(i, 3).setValue('Práctica Preparada');
+        }
+      }
+    }
+    // Verificar si tiene columna Laboratorio
     if (headers.indexOf('Laboratorio') === -1) {
-      bitacoraSheet.getRange(1, 8).setValue('Laboratorio');
+      bitacoraSheet.getRange(1, 9).setValue('Laboratorio');
       // Asignar STEM por defecto a entradas existentes
       const lastRow = bitacoraSheet.getLastRow();
       if (lastRow > 1) {
         for (let i = 2; i <= lastRow; i++) {
-          bitacoraSheet.getRange(i, 8).setValue('STEM');
+          bitacoraSheet.getRange(i, 9).setValue('STEM');
         }
       }
     }
@@ -968,11 +981,13 @@ function getBitacora() {
         entradas.push({
           id: data[i][0],
           fecha: data[i][1],
-          practica: data[i][2],
-          items: data[i][3],
-          usuario: data[i][4],
-          observaciones: data[i][5] || '',
-          preparador: data[i][6] || ''
+          tipo: data[i][2] || 'Práctica Preparada',
+          practica: data[i][3],
+          items: data[i][4] || '',
+          usuario: data[i][5],
+          observaciones: data[i][6] || '',
+          preparador: data[i][7] || '',
+          laboratorio: data[i][8] || 'STEM'
         });
       }
     }
@@ -1040,7 +1055,7 @@ function buscarBitacora(filtros) {
 /**
  * Guarda una entrada de bitácora
  */
-function saveBitacora(entry) {
+function saveBitacora(entry, laboratorio) {
   try {
     const ss = SpreadsheetApp.openById(BITACORA_SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEETS.BITACORA);
@@ -1051,6 +1066,7 @@ function saveBitacora(entry) {
     }
 
     const id = entry.id || Utilities.getUuid();
+    const lab = laboratorio || LABORATORIOS.STEM;
 
     // Si tiene ID, verificar si es actualización
     if (entry.id) {
@@ -1058,14 +1074,16 @@ function saveBitacora(entry) {
       for (let i = 1; i < data.length; i++) {
         if (data[i][0] === entry.id) {
           // Actualizar entrada existente
-          sheet.getRange(i + 1, 1, 1, 7).setValues([[
+          sheet.getRange(i + 1, 1, 1, 9).setValues([[
             id,
             entry.fecha,
+            entry.tipo || 'Otro',
             entry.practica,
-            entry.items,
+            entry.items || '',
             entry.usuario,
             entry.observaciones || '',
-            entry.preparador || ''
+            entry.preparador || '',
+            lab
           ]]);
           return { success: true };
         }
@@ -1076,11 +1094,13 @@ function saveBitacora(entry) {
     sheet.appendRow([
       id,
       entry.fecha,
+      entry.tipo || 'Otro',
       entry.practica,
-      entry.items,
+      entry.items || '',
       entry.usuario,
       entry.observaciones || '',
-      entry.preparador || ''
+      entry.preparador || '',
+      lab
     ]);
 
     return { success: true };
@@ -1093,18 +1113,19 @@ function saveBitacora(entry) {
 /**
  * Agrega entrada automática cuando se completa una solicitud
  */
-function addBitacoraFromSolicitud(solicitud, preparador) {
+function addBitacoraFromSolicitud(solicitud, preparador, laboratorio) {
   try {
     const entry = {
       fecha: new Date().toISOString().split('T')[0],
-      practica: 'Solicitud preparada: ' + solicitud.nombre,
+      tipo: 'Práctica Preparada',
+      practica: solicitud.nombre,
       items: solicitud.materiales,
       usuario: solicitud.docente,
       observaciones: 'Solicitud completada automáticamente',
       preparador: preparador
     };
 
-    return saveBitacora(entry);
+    return saveBitacora(entry, laboratorio);
   } catch (error) {
     Logger.log('Error al agregar entrada automática de bitácora: ' + error);
     return { success: false, error: error.toString() };
@@ -1459,7 +1480,7 @@ function marcarSolicitudPreparada(data, laboratorio) {
         };
 
         // Agregar entrada automática en bitácora
-        addBitacoraFromSolicitud(solicitud, data.preparador || 'Preparador');
+        addBitacoraFromSolicitud(solicitud, data.preparador || 'Preparador', lab);
 
         // Enviar notificación al docente
         const docenteEmail = sheetData[i][8];

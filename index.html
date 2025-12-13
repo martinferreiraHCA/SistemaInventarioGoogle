@@ -1050,20 +1050,30 @@
                     <input type="date" id="bitacoraFecha" required>
                 </div>
                 <div class="form-group">
-                    <label>Práctica Preparada *</label>
-                    <input type="text" id="bitacoraPractica" required>
+                    <label>Tipo de Tarea *</label>
+                    <select id="bitacoraTipo" required onchange="updateBitacoraLabels()">
+                        <option value="Práctica Preparada">Práctica Preparada</option>
+                        <option value="Reparación">Reparación de Equipo</option>
+                        <option value="Mantenimiento">Mantenimiento</option>
+                        <option value="Orden/Limpieza">Orden y Limpieza</option>
+                        <option value="Otro">Otro</option>
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>Items Preparados *</label>
-                    <textarea id="bitacoraItems" placeholder="Liste los items preparados" required></textarea>
+                    <label id="bitacoraPracticaLabel">Nombre de la Tarea *</label>
+                    <input type="text" id="bitacoraPractica" placeholder="Ej: Práctica de Péndulo Simple" required>
                 </div>
                 <div class="form-group">
-                    <label>Usuario Destinatario *</label>
-                    <input type="text" id="bitacoraUsuario" required>
+                    <label id="bitacoraItemsLabel">Items/Materiales Utilizados</label>
+                    <textarea id="bitacoraItems" placeholder="Liste los items o materiales utilizados"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Observaciones</label>
-                    <textarea id="bitacoraObservaciones"></textarea>
+                    <label>Responsable *</label>
+                    <input type="text" id="bitacoraUsuario" placeholder="Nombre del responsable o destinatario" required>
+                </div>
+                <div class="form-group">
+                    <label>Observaciones/Detalles</label>
+                    <textarea id="bitacoraObservaciones" placeholder="Detalles adicionales, problemas encontrados, etc."></textarea>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn close-modal" onclick="closeBitacoraModal()">Cancelar</button>
@@ -1810,12 +1820,27 @@
 
             let html = '';
             entries.forEach(entry => {
+                // Determinar color del badge según tipo
+                let tipoColor = '#4CAF50'; // Verde por defecto
+                const tipo = entry.tipo || 'Práctica Preparada';
+                switch(tipo) {
+                    case 'Práctica Preparada': tipoColor = '#4CAF50'; break;
+                    case 'Reparación': tipoColor = '#FF9800'; break;
+                    case 'Mantenimiento': tipoColor = '#2196F3'; break;
+                    case 'Orden/Limpieza': tipoColor = '#9C27B0'; break;
+                    default: tipoColor = '#757575'; break;
+                }
+
                 html += `<div class="bitacora-entry" style="position: relative;">
-                    <div class="bitacora-date">${entry.fecha} - ${entry.practica}</div>
-                    <div><strong>Items:</strong> ${entry.items}</div>
-                    <div><strong>Usuario:</strong> ${entry.usuario}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div class="bitacora-date">${entry.fecha} - ${entry.practica}</div>
+                        <span style="background-color: ${tipoColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">${tipo}</span>
+                    </div>
+                    ${entry.items ? `<div><strong>Items:</strong> ${entry.items}</div>` : ''}
+                    <div><strong>Responsable:</strong> ${entry.usuario}</div>
                     ${entry.observaciones ? `<div><strong>Observaciones:</strong> ${entry.observaciones}</div>` : ''}
-                    ${entry.preparador ? `<div><strong>Preparador:</strong> ${entry.preparador}</div>` : ''}
+                    ${entry.preparador ? `<div><strong>Registrado por:</strong> ${entry.preparador}</div>` : ''}
+                    ${entry.laboratorio ? `<div><strong>Laboratorio:</strong> ${entry.laboratorio}</div>` : ''}
                     <div style="margin-top: 10px; display: flex; gap: 8px;">
                         <button class="action-btn edit" onclick='editBitacoraEntry(${JSON.stringify(entry)})'>Editar</button>
                         <button class="action-btn delete" onclick="deleteBitacoraEntry('${entry.id}')">Eliminar</button>
@@ -1831,11 +1856,47 @@
             document.getElementById('bitacoraId').value = ''; // Limpiar ID para nueva entrada
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('bitacoraFecha').value = today;
+            document.getElementById('bitacoraTipo').value = 'Práctica Preparada';
+            updateBitacoraLabels(); // Inicializar labels
             document.getElementById('bitacoraModal').classList.add('active');
         }
 
         function closeBitacoraModal() {
             document.getElementById('bitacoraModal').classList.remove('active');
+        }
+
+        function updateBitacoraLabels() {
+            const tipo = document.getElementById('bitacoraTipo').value;
+            const practicaLabel = document.getElementById('bitacoraPracticaLabel');
+            const itemsLabel = document.getElementById('bitacoraItemsLabel');
+            const practicaInput = document.getElementById('bitacoraPractica');
+
+            switch(tipo) {
+                case 'Práctica Preparada':
+                    practicaLabel.textContent = 'Nombre de la Práctica *';
+                    itemsLabel.textContent = 'Items/Materiales Preparados';
+                    practicaInput.placeholder = 'Ej: Práctica de Péndulo Simple';
+                    break;
+                case 'Reparación':
+                    practicaLabel.textContent = 'Equipo Reparado *';
+                    itemsLabel.textContent = 'Piezas/Materiales Utilizados';
+                    practicaInput.placeholder = 'Ej: Multímetro digital';
+                    break;
+                case 'Mantenimiento':
+                    practicaLabel.textContent = 'Descripción del Mantenimiento *';
+                    itemsLabel.textContent = 'Equipos/Áreas Afectadas';
+                    practicaInput.placeholder = 'Ej: Calibración de balanzas';
+                    break;
+                case 'Orden/Limpieza':
+                    practicaLabel.textContent = 'Descripción de la Tarea *';
+                    itemsLabel.textContent = 'Áreas/Materiales';
+                    practicaInput.placeholder = 'Ej: Reorganización del área de química';
+                    break;
+                default:
+                    practicaLabel.textContent = 'Nombre de la Tarea *';
+                    itemsLabel.textContent = 'Items/Materiales Utilizados';
+                    practicaInput.placeholder = 'Descripción de la tarea';
+            }
         }
 
         function saveBitacora(event) {
@@ -1844,6 +1905,7 @@
             const entry = {
                 id: document.getElementById('bitacoraId').value || undefined,
                 fecha: document.getElementById('bitacoraFecha').value,
+                tipo: document.getElementById('bitacoraTipo').value,
                 practica: document.getElementById('bitacoraPractica').value,
                 items: document.getElementById('bitacoraItems').value,
                 usuario: document.getElementById('bitacoraUsuario').value,
@@ -1867,16 +1929,18 @@
                     hideLoading();
                     showNotification('Error: ' + error.message, 'error');
                 })
-                .saveBitacora(entry);
+                .saveBitacora(entry, currentLaboratorio);
         }
 
         function editBitacoraEntry(entry) {
             document.getElementById('bitacoraId').value = entry.id;
             document.getElementById('bitacoraFecha').value = entry.fecha;
+            document.getElementById('bitacoraTipo').value = entry.tipo || 'Práctica Preparada';
             document.getElementById('bitacoraPractica').value = entry.practica;
             document.getElementById('bitacoraItems').value = entry.items;
             document.getElementById('bitacoraUsuario').value = entry.usuario;
             document.getElementById('bitacoraObservaciones').value = entry.observaciones || '';
+            updateBitacoraLabels();
             document.getElementById('bitacoraModal').classList.add('active');
         }
 
