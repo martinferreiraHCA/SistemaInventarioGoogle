@@ -1666,6 +1666,10 @@
             document.getElementById('elementoForm').reset();
             document.getElementById('elementoId').value = '';
             document.getElementById('elementoImagePreview').innerHTML = '';
+
+            // Actualizar selector de categorías según laboratorio actual
+            updateCategoriasSelector();
+
             document.getElementById('elementoModal').classList.add('active');
         }
 
@@ -1675,6 +1679,11 @@
             document.getElementById('elementoNombre').value = item.nombre;
             document.getElementById('elementoCantidad').value = item.cantidad;
             document.getElementById('elementoEstado').value = item.estado;
+
+            // Actualizar selector de categorías según laboratorio actual
+            updateCategoriasSelector();
+
+            // Seleccionar la categoría del elemento después de actualizar el selector
             document.getElementById('elementoCategoria').value = item.categoria;
             document.getElementById('elementoDescripcion').value = item.descripcion || '';
             document.getElementById('elementoUbicacion').value = item.ubicacion || '';
