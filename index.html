@@ -881,14 +881,7 @@
                         <input type="text" id="searchInventario" placeholder="Buscar por nombre...">
                         <select id="filterCategoria">
                             <option value="">Todas las categorías</option>
-                            <option value="Mecánica">Mecánica</option>
-                            <option value="Electromagnetismo">Electromagnetismo</option>
-                            <option value="Óptica">Óptica</option>
-                            <option value="Termodinámica">Termodinámica</option>
-                            <option value="Ondas y Acústica">Ondas y Acústica</option>
-                            <option value="Física Moderna">Física Moderna</option>
-                            <option value="Electrónica">Electrónica</option>
-                            <option value="Otros">Otros</option>
+                            <!-- Las categorías se cargan dinámicamente -->
                         </select>
                         <select id="filterEstado">
                             <option value="">Todos los estados</option>
@@ -2560,19 +2553,45 @@
         }
 
         function updateCategoriasSelector() {
+            // Actualizar selector del modal de elemento
             const selector = document.getElementById('elementoCategoria');
-            if (!selector) return;
+            if (selector) {
+                // Limpiar opciones actuales
+                selector.innerHTML = '';
 
-            // Limpiar opciones actuales
-            selector.innerHTML = '';
+                // Agregar categorías dinámicamente
+                categorias.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.nombre;
+                    option.textContent = cat.nombre;
+                    selector.appendChild(option);
+                });
+            }
 
-            // Agregar categorías dinámicamente
-            categorias.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat.nombre;
-                option.textContent = cat.nombre;
-                selector.appendChild(option);
-            });
+            // Actualizar filtro de categorías en el inventario
+            const filterSelector = document.getElementById('filterCategoria');
+            if (filterSelector) {
+                // Guardar valor actual del filtro
+                const currentFilterValue = filterSelector.value;
+
+                // Limpiar opciones excepto "Todas las categorías"
+                filterSelector.innerHTML = '<option value="">Todas las categorías</option>';
+
+                // Agregar categorías dinámicamente
+                categorias.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.nombre;
+                    option.textContent = cat.nombre;
+                    filterSelector.appendChild(option);
+                });
+
+                // Restaurar valor del filtro si aún existe
+                if (currentFilterValue && categorias.find(c => c.nombre === currentFilterValue)) {
+                    filterSelector.value = currentFilterValue;
+                } else {
+                    filterSelector.value = ''; // Reset a "Todas las categorías"
+                }
+            }
         }
 
         function openAddCategoriaModal() {
