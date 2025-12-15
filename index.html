@@ -1624,7 +1624,9 @@
             const userLabs = currentUser.laboratorios || [currentUser.laboratorio || 'STEM'];
             const hasMultipleLabs = userLabs.length > 1;
 
-            if (currentUser.rol === 'Admin' || hasMultipleLabs) {
+            // Solo Admin y Docentes con múltiples labs pueden cambiar de laboratorio
+            // Los Preparadores SIEMPRE están fijos a su laboratorio asignado
+            if (currentUser.rol === 'Admin' || (currentUser.rol === 'Docente' && hasMultipleLabs)) {
                 const labSelector = document.getElementById('labSelector');
                 const labSelect = document.getElementById('labSelect');
 
@@ -1632,12 +1634,12 @@
 
                 // Si el usuario tiene laboratorios específicos, limitar el selector a esos
                 if (currentUser.rol !== 'Admin' && hasMultipleLabs) {
-                    // Personalizar selector para docentes/preparadores con múltiples labs
+                    // Personalizar selector para docentes con múltiples labs
                     labSelect.innerHTML = '';
                     userLabs.forEach(lab => {
                         const option = document.createElement('option');
                         option.value = lab;
-                        option.textContent = lab;
+                        option.textContent = lab === 'STEM' ? '🔬 STEM' : '🧪 Bio-Química';
                         labSelect.appendChild(option);
                     });
                 }
@@ -1650,7 +1652,7 @@
                 labSelect.value = currentLaboratorio;
             } else {
                 document.getElementById('labSelector').style.display = 'none';
-                // Para usuarios con un solo laboratorio, usar su laboratorio asignado
+                // Para Preparadores y usuarios con un solo laboratorio, usar su laboratorio asignado (sin opción de cambio)
                 currentLaboratorio = userLabs[0];
             }
 

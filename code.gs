@@ -1637,7 +1637,7 @@ Sistema de Gestión de Laboratorio`;
           docenteEmail,
           '✅ Práctica Preparada: ' + nombrePractica,
           emailBody,
-          { fotoURL: fotoURL || null }
+          { fotoBase64: data.foto || null } // Pasar base64 directamente en lugar de URL
         );
 
         if (emailResult.success) {
@@ -1878,18 +1878,44 @@ function sendNotification(email, subject, body, options) {
     // Convertir saltos de línea a HTML
     const htmlBody = body.replace(/\n/g, '<br>');
 
-    // Agregar foto si está disponible
+    // Preparar imagen inline si existe
     let fotoHtml = '';
-    if (options.fotoURL) {
-      fotoHtml = `
-        <div style="margin: 20px 0; text-align: center;">
-          <p style="font-weight: bold; color: #242B59; margin-bottom: 10px;">📷 Material Preparado:</p>
-          <img src="${options.fotoURL}" alt="Material Preparado" style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        </div>
-      `;
+    let inlineImages = {};
+
+    if (options.fotoBase64 && options.fotoBase64.startsWith('data:image/')) {
+      try {
+        // Extraer los datos base64 y el tipo MIME
+        const matches = options.fotoBase64.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+
+          // Convertir base64 a blob
+          const blob = Utilities.newBlob(
+            Utilities.base64Decode(base64Data),
+            mimeType,
+            'material_preparado.jpg'
+          );
+
+          // Agregar como inline image
+          inlineImages['materialPreparado'] = blob;
+
+          // Referenciar la imagen inline en el HTML
+          fotoHtml = `
+            <div style="margin: 20px 0; text-align: center;">
+              <p style="font-weight: bold; color: #242B59; margin-bottom: 10px;">📷 Material Preparado:</p>
+              <img src="cid:materialPreparado" alt="Material Preparado" style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            </div>
+          `;
+          Logger.log('Imagen procesada y agregada como inline attachment');
+        }
+      } catch (imgError) {
+        Logger.log('Error al procesar imagen para email: ' + imgError);
+        // Continuar sin imagen si hay error
+      }
     }
 
-    MailApp.sendEmail({
+    const emailOptions = {
       to: email,
       subject: '[Laboratorio] ' + subject,
       body: body,
@@ -1906,7 +1932,14 @@ function sendNotification(email, subject, body, options) {
           </div>
         </div>
       `
-    });
+    };
+
+    // Agregar inlineImages solo si hay imágenes
+    if (Object.keys(inlineImages).length > 0) {
+      emailOptions.inlineImages = inlineImages;
+    }
+
+    MailApp.sendEmail(emailOptions);
 
     Logger.log('Email enviado exitosamente');
     return { success: true };
