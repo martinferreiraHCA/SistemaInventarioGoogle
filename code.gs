@@ -1697,9 +1697,19 @@ function saveUsuario(usuario) {
       return { success: false, error: 'El rol debe ser Preparador o Docente' };
     }
 
-    // Validar laboratorio
-    if (!usuario.laboratorio || (usuario.laboratorio !== LABORATORIOS.STEM && usuario.laboratorio !== LABORATORIOS.BIOQUIMICA)) {
-      return { success: false, error: 'El laboratorio debe ser STEM o Bio-Química' };
+    // Validar laboratorios (puede ser uno o varios separados por comas)
+    if (!usuario.laboratorio || usuario.laboratorio.trim() === '') {
+      return { success: false, error: 'Debe seleccionar al menos un laboratorio' };
+    }
+
+    // Validar que cada laboratorio en la lista sea válido
+    const laboratoriosArray = usuario.laboratorio.split(',').map(lab => lab.trim());
+    const laboratoriosValidos = [LABORATORIOS.STEM, LABORATORIOS.BIOQUIMICA];
+
+    for (let lab of laboratoriosArray) {
+      if (!laboratoriosValidos.includes(lab)) {
+        return { success: false, error: 'Laboratorio inválido: ' + lab + '. Debe ser STEM o Bio-Química' };
+      }
     }
 
     // Validar formato de email
