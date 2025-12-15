@@ -1594,6 +1594,8 @@ function marcarSolicitudPreparada(data, laboratorio) {
         const materialesExtra = sheetData[i][6] || 'Ninguno';
         const observacionesPreparador = data.observaciones || 'Sin observaciones';
 
+        Logger.log('Intentando enviar email a: ' + docenteEmail);
+
         // Construir email con todos los detalles
         const emailBody = `Estimado/a ${nombreDocente},
 
@@ -1623,13 +1625,21 @@ Por favor, confirme la recepción de este correo y coordine con el preparador pa
 Saludos,
 Sistema de Gestión de Laboratorio`;
 
-        sendNotification(
+        // Enviar notificación y capturar resultado
+        const emailResult = sendNotification(
           docenteEmail,
           '✅ Práctica Preparada: ' + nombrePractica,
           emailBody
         );
 
-        return { success: true };
+        if (emailResult.success) {
+          Logger.log('Email enviado exitosamente a: ' + docenteEmail);
+        } else {
+          Logger.log('Error al enviar email: ' + emailResult.error);
+          // Continuar aunque falle el email, pero registrar el error
+        }
+
+        return { success: true, emailSent: emailResult.success };
       }
     }
 
@@ -1796,10 +1806,38 @@ function deleteUsuario(id) {
 // ==================== NOTIFICACIONES ====================
 
 /**
+ * Función de prueba para verificar envío de emails
+ * EJECUTAR MANUALMENTE desde el editor de Apps Script
+ */
+function testSendEmail() {
+  const testEmail = Session.getActiveUser().getEmail(); // Tu email de Google
+  const result = sendNotification(
+    testEmail,
+    'Prueba de Email',
+    'Este es un email de prueba del sistema de laboratorio.\n\nSi recibes esto, el sistema de emails funciona correctamente.'
+  );
+
+  Logger.log('Resultado de prueba: ' + JSON.stringify(result));
+  return result;
+}
+
+/**
  * Envía una notificación por email
  */
 function sendNotification(email, subject, body) {
   try {
+    // Validar que el email no esté vacío
+    if (!email || email.trim() === '') {
+      Logger.log('Error: Email vacío o inválido');
+      return { success: false, error: 'Email vacío o inválido' };
+    }
+
+    Logger.log('Enviando email a: ' + email);
+    Logger.log('Asunto: ' + subject);
+
+    // Convertir saltos de línea a HTML
+    const htmlBody = body.replace(/\n/g, '<br>');
+
     MailApp.sendEmail({
       to: email,
       subject: '[Laboratorio] ' + subject,
@@ -1808,16 +1846,21 @@ function sendNotification(email, subject, body) {
         <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
           <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             <h2 style="color: #242B59; margin-bottom: 20px;">${subject}</h2>
-            <p style="color: #252525; line-height: 1.6;">${body}</p>
+            <div style="color: #252525; line-height: 1.6; white-space: pre-wrap; font-family: monospace; font-size: 13px;">
+              ${htmlBody}
+            </div>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="color: #888; font-size: 12px;">Sistema de Gestión de Laboratorio</p>
           </div>
         </div>
       `
     });
+
+    Logger.log('Email enviado exitosamente');
     return { success: true };
   } catch (error) {
-    Logger.log('Error al enviar notificación: ' + error);
+    Logger.log('ERROR al enviar notificación: ' + error);
+    Logger.log('Stack trace: ' + error.stack);
     return { success: false, error: error.toString() };
   }
 }

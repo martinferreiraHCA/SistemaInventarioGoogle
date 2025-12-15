@@ -2680,11 +2680,15 @@
                     submitBtn.disabled = false;
                     submitBtn.textContent = originalBtnText;
                     if (result.success) {
-                        showNotification('✅ Solicitud marcada como preparada y docente notificado');
+                        if (result.emailSent === false) {
+                            showNotification('⚠️ Solicitud marcada como preparada. ADVERTENCIA: No se pudo enviar email al docente', 'error');
+                        } else {
+                            showNotification('✅ Solicitud marcada como preparada y docente notificado por email');
+                        }
                         closePrepararModal();
                         loadAllSolicitudes();
                     } else {
-                        showNotification('❌ Error al actualizar solicitud', 'error');
+                        showNotification('❌ Error al actualizar solicitud: ' + (result.error || ''), 'error');
                     }
                 })
                 .withFailureHandler(function(error) {
