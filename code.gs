@@ -102,7 +102,7 @@ function initializeLaboratorioSheets(spreadsheetId, nombreLaboratorio) {
     if (!usuariosSheet) {
       usuariosSheet = ss.insertSheet(SHEETS.USUARIOS);
       usuariosSheet.getRange(1, 1, 1, 6).setValues([[
-        'ID', 'Nombre', 'Email', 'Password', 'Rol', 'Laboratorio'
+        'ID', 'Nombre', 'Email', 'Password', 'Rol', 'Laboratorios'
       ]]);
       usuariosSheet.getRange(1, 1, 1, 6).setFontWeight('bold');
       usuariosSheet.setFrozenRows(1);
@@ -113,18 +113,25 @@ function initializeLaboratorioSheets(spreadsheetId, nombreLaboratorio) {
       const preparadorBioId = Utilities.getUuid();
       const docenteSTEMId = Utilities.getUuid();
       const docenteBioId = Utilities.getUuid();
+      const docenteAmbosId = Utilities.getUuid();
 
-      usuariosSheet.appendRow([adminId, 'Administrador Sistema', 'admin@laboratorio.com', 'admin123', 'Admin', 'STEM']);
+      // Laboratorios separados por comas para múltiples asignaciones
+      usuariosSheet.appendRow([adminId, 'Administrador Sistema', 'admin@laboratorio.com', 'admin123', 'Admin', 'STEM,Bio-Química']);
       usuariosSheet.appendRow([preparadorSTEMId, 'Preparador STEM', 'preparador.stem@laboratorio.com', 'stem123', 'Preparador', 'STEM']);
       usuariosSheet.appendRow([preparadorBioId, 'Preparador Bio-Química', 'preparador.bio@laboratorio.com', 'bio123', 'Preparador', 'Bio-Química']);
       usuariosSheet.appendRow([docenteSTEMId, 'Docente STEM', 'docente.stem@laboratorio.com', 'docente123', 'Docente', 'STEM']);
       usuariosSheet.appendRow([docenteBioId, 'Docente Bio-Química', 'docente.bio@laboratorio.com', 'docente123', 'Docente', 'Bio-Química']);
+      usuariosSheet.appendRow([docenteAmbosId, 'Docente Ambos Labs', 'docente.ambos@laboratorio.com', 'docente123', 'Docente', 'STEM,Bio-Química']);
     } else {
-      // Si ya existe, verificar si tiene columna Laboratorio, si no, agregarla
+      // Si ya existe, verificar si tiene columna Laboratorios
       const headers = usuariosSheet.getRange(1, 1, 1, usuariosSheet.getLastColumn()).getValues()[0];
-      if (headers.indexOf('Laboratorio') === -1) {
-        // Agregar columna Laboratorio
-        usuariosSheet.getRange(1, 6).setValue('Laboratorio');
+      if (headers.indexOf('Laboratorio') !== -1 && headers.indexOf('Laboratorios') === -1) {
+        // Migrar de Laboratorio (singular) a Laboratorios (plural, soporta múltiples)
+        usuariosSheet.getRange(1, 6).setValue('Laboratorios');
+        // Los valores existentes se mantienen compatibles (un solo laboratorio)
+      } else if (headers.indexOf('Laboratorios') === -1) {
+        // Agregar columna Laboratorios si no existe ninguna
+        usuariosSheet.getRange(1, 6).setValue('Laboratorios');
         // Asignar STEM por defecto a usuarios existentes
         const lastRow = usuariosSheet.getLastRow();
         if (lastRow > 1) {
@@ -367,6 +374,10 @@ function loginUser(email, password) {
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][2] === email && data[i][3] === password) {
+        // Parsear laboratorios: puede ser string simple o separados por comas
+        const laboratoriosStr = data[i][5] || 'STEM';
+        const laboratoriosArray = laboratoriosStr.split(',').map(lab => lab.trim());
+
         return {
           success: true,
           user: {
@@ -374,7 +385,8 @@ function loginUser(email, password) {
             nombre: data[i][1],
             email: data[i][2],
             rol: data[i][4],
-            laboratorio: data[i][5] || 'STEM' // Laboratorio asignado
+            laboratorios: laboratoriosArray, // Array de laboratorios asignados
+            laboratorio: laboratoriosArray[0] // Laboratorio por defecto (primer elemento)
           }
         };
       }

@@ -820,11 +820,108 @@
         .filter-row button {
             flex-shrink: 0;
         }
+
+        /* Overlay de carga */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .loading-content {
+            background: var(--blanco);
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+            min-width: 320px;
+            max-width: 400px;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--gris-medio);
+            border-top: 4px solid var(--azul-principal);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-message {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--negro);
+            margin-bottom: 12px;
+        }
+
+        .loading-submessage {
+            font-size: 13px;
+            color: var(--gris-oscuro);
+            margin-bottom: 20px;
+        }
+
+        .loading-progress {
+            width: 100%;
+            height: 6px;
+            background: var(--gris-medio);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 16px;
+        }
+
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--azul-principal), var(--azul-claro));
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.4s ease;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
     </style>
 </head>
 <body>
     <!-- Notificación -->
     <div id="notification" class="notification"></div>
+
+    <!-- Overlay de carga -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-message" id="loadingMessage">Cargando...</div>
+            <div class="loading-submessage" id="loadingSubmessage">Por favor espere</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loadingProgressBar"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Pantalla de Login -->
     <div id="loginView" class="login-container">
@@ -1299,6 +1396,54 @@
         let altasBajas = [];
         let categorias = [];
 
+        // ==================== FUNCIONES DE CARGA ====================
+
+        /**
+         * Muestra el overlay de carga con un mensaje
+         */
+        function showLoading(message = 'Cargando...', submessage = 'Por favor espere') {
+            const overlay = document.getElementById('loadingOverlay');
+            const messageEl = document.getElementById('loadingMessage');
+            const submessageEl = document.getElementById('loadingSubmessage');
+            const progressBar = document.getElementById('loadingProgressBar');
+
+            messageEl.textContent = message;
+            submessageEl.textContent = submessage;
+            progressBar.style.width = '0%';
+
+            overlay.classList.add('active');
+        }
+
+        /**
+         * Oculta el overlay de carga
+         */
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            const progressBar = document.getElementById('loadingProgressBar');
+
+            // Completar la barra de progreso
+            progressBar.style.width = '100%';
+
+            // Esperar un momento antes de ocultar
+            setTimeout(() => {
+                overlay.classList.remove('active');
+            }, 300);
+        }
+
+        /**
+         * Actualiza el progreso de carga
+         */
+        function updateLoadingProgress(percent, message = null, submessage = null) {
+            const progressBar = document.getElementById('loadingProgressBar');
+            const messageEl = document.getElementById('loadingMessage');
+            const submessageEl = document.getElementById('loadingSubmessage');
+
+            progressBar.style.width = percent + '%';
+
+            if (message) messageEl.textContent = message;
+            if (submessage) submessageEl.textContent = submessage;
+        }
+
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
             // Verificar si hay sesión guardada
@@ -1375,11 +1520,13 @@
                 return;
             }
 
-            showLoading();
+            showLoading('Iniciando sesión...', 'Verificando credenciales');
+            updateLoadingProgress(30);
+
             google.script.run
                 .withSuccessHandler(function(result) {
-                    hideLoading();
                     if (result.success) {
+                        updateLoadingProgress(60, 'Sesión iniciada', 'Cargando datos del sistema');
                         currentUser = result.user;
                         currentLaboratorio = currentUser.laboratorio || 'STEM';
                         // Guardar sesión en localStorage
@@ -1389,6 +1536,7 @@
                         initializeSystem();
                         showNotification('Bienvenido ' + currentUser.nombre);
                     } else {
+                        hideLoading();
                         showNotification(result.message || 'Credenciales incorrectas', 'error');
                     }
                 })
@@ -1427,6 +1575,8 @@
 
         // Inicializar sistema
         function initializeSystem() {
+            updateLoadingProgress(70, 'Configurando interfaz...', 'Preparando su espacio de trabajo');
+
             // Mostrar nombre, rol y laboratorio del usuario
             const labText = currentUser.laboratorio || currentLaboratorio;
             const labIcon = currentLaboratorio === 'Bio-Química' ? '🧪' : '🔬';
@@ -1440,18 +1590,44 @@
                 <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">${currentUser.rol}</div>
             `;
 
-            // Mostrar selector de laboratorio solo para Admin
-            if (currentUser.rol === 'Admin') {
-                document.getElementById('labSelector').style.display = 'block';
-                document.getElementById('labSelect').value = currentLaboratorio;
+            // Mostrar selector de laboratorio para Admin o Docentes/Preparadores con múltiples laboratorios
+            const userLabs = currentUser.laboratorios || [currentUser.laboratorio || 'STEM'];
+            const hasMultipleLabs = userLabs.length > 1;
+
+            if (currentUser.rol === 'Admin' || hasMultipleLabs) {
+                const labSelector = document.getElementById('labSelector');
+                const labSelect = document.getElementById('labSelect');
+
+                labSelector.style.display = 'block';
+
+                // Si el usuario tiene laboratorios específicos, limitar el selector a esos
+                if (currentUser.rol !== 'Admin' && hasMultipleLabs) {
+                    // Personalizar selector para docentes/preparadores con múltiples labs
+                    labSelect.innerHTML = '';
+                    userLabs.forEach(lab => {
+                        const option = document.createElement('option');
+                        option.value = lab;
+                        option.textContent = lab;
+                        labSelect.appendChild(option);
+                    });
+                }
+
+                // Verificar si el laboratorio actual está en la lista de laboratorios del usuario
+                if (!userLabs.includes(currentLaboratorio)) {
+                    currentLaboratorio = userLabs[0];
+                }
+
+                labSelect.value = currentLaboratorio;
             } else {
                 document.getElementById('labSelector').style.display = 'none';
-                // Para preparadores y docentes, usar su laboratorio asignado
-                currentLaboratorio = currentUser.laboratorio || 'STEM';
+                // Para usuarios con un solo laboratorio, usar su laboratorio asignado
+                currentLaboratorio = userLabs[0];
             }
 
             // Aplicar colores del laboratorio
             applyLaboratorioColors();
+
+            updateLoadingProgress(80, 'Cargando datos...', 'Obteniendo información del laboratorio');
 
             loadMenu();
             loadCategorias(); // Cargar categorías para el selector dinámico
@@ -1467,12 +1643,17 @@
             }
         }
 
-        // Cambiar laboratorio (solo para Admin)
+        // Cambiar laboratorio (Admin y usuarios multi-laboratorio)
         function changeLaboratorio() {
             const newLab = document.getElementById('labSelect').value;
             if (newLab !== currentLaboratorio) {
+                showLoading('Cambiando a ' + newLab, 'Cargando datos del laboratorio');
+                updateLoadingProgress(20);
+
                 currentLaboratorio = newLab;
                 saveSession(); // Guardar en localStorage
+
+                updateLoadingProgress(40, 'Aplicando configuración', 'Actualizando interfaz');
 
                 // Aplicar colores del nuevo laboratorio
                 applyLaboratorioColors();
@@ -1487,6 +1668,8 @@
                     <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">${currentUser.rol}</div>
                 `;
 
+                updateLoadingProgress(60, 'Cargando información', 'Obteniendo datos actualizados');
+
                 showNotification('Cambiado a ' + currentLaboratorio);
 
                 // Recargar datos del nuevo laboratorio
@@ -1497,6 +1680,8 @@
                     loadAltasBajas();
                     loadBitacora();
                     loadAllSolicitudes();
+                } else {
+                    loadMisSolicitudes();
                 }
             }
         }
@@ -1565,12 +1750,13 @@
 
         // Cargar inventario
         function loadInventario() {
-            showLoading();
+            updateLoadingProgress(85, 'Cargando inventario...', 'Obteniendo elementos del laboratorio');
             google.script.run
                 .withSuccessHandler(function(data) {
-                    hideLoading();
                     inventario = data;
                     displayInventario(data);
+                    updateLoadingProgress(95, 'Finalizando...', 'Casi listo');
+                    setTimeout(hideLoading, 500);
                 })
                 .withFailureHandler(function(error) {
                     hideLoading();
@@ -2506,10 +2692,8 @@
 
         // Categorías
         function loadCategorias() {
-            showLoading();
             google.script.run
                 .withSuccessHandler(function(data) {
-                    hideLoading();
                     categorias = data;
                     displayCategorias(data);
                     // También actualizar el selector de categorías en el modal de elemento
