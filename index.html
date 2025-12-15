@@ -2002,7 +2002,11 @@
             const submitBtn = event.target.querySelector('button[type="submit"]');
             if (submitBtn.disabled) return; // Ya está procesando
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Guardando...';
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.textContent = 'Procesando...';
+
+            showLoading('Preparando elemento...', 'Validando información');
+            updateLoadingProgress(10);
 
             try {
                 const foto = document.getElementById('elementoFoto').files[0];
@@ -2024,52 +2028,60 @@
                     elemento.fotoUbicacion = existingItem.fotoUbicacion || '';
                 }
 
+                updateLoadingProgress(30);
+
                 // Comprimir y procesar foto del elemento
                 if (foto) {
+                    updateLoadingProgress(40, 'Comprimiendo imagen principal...', 'Optimizando calidad');
                     console.log('Comprimiendo foto del elemento...');
                     elemento.foto = await compressImage(foto, 800, 0.7);
                 }
 
+                updateLoadingProgress(60);
+
                 // Comprimir y procesar foto de ubicación
                 if (fotoUbicacion) {
+                    updateLoadingProgress(70, 'Comprimiendo imagen de ubicación...', 'Optimizando calidad');
                     console.log('Comprimiendo foto de ubicación...');
                     elemento.fotoUbicacion = await compressImage(fotoUbicacion, 600, 0.7);
                 }
 
+                updateLoadingProgress(80, 'Guardando elemento...', 'Enviando al servidor');
+
                 // Enviar al servidor
-                submitElemento(elemento, submitBtn);
+                submitElemento(elemento, submitBtn, originalBtnText);
 
             } catch (error) {
                 console.error('Error al procesar imágenes:', error);
-                showNotification('Error al procesar imágenes', 'error');
+                hideLoading();
+                showNotification('Error al procesar imágenes: ' + error.message, 'error');
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Guardar';
+                submitBtn.textContent = originalBtnText;
             }
         }
 
-        function submitElemento(elemento, submitBtn) {
-            showLoading();
+        function submitElemento(elemento, submitBtn, originalBtnText) {
             google.script.run
                 .withSuccessHandler(function(result) {
                     hideLoading();
                     if (result.success) {
-                        showNotification('Elemento guardado correctamente');
+                        showNotification('✅ Elemento guardado correctamente');
                         closeElementoModal();
                         loadInventario();
                         if (currentUser.rol === 'Preparador' || currentUser.rol === 'Admin') {
                             loadEstadisticas();
                         }
                     } else {
-                        showNotification('Error al guardar elemento', 'error');
+                        showNotification('❌ Error al guardar elemento', 'error');
                         submitBtn.disabled = false;
-                        submitBtn.textContent = 'Guardar';
+                        submitBtn.textContent = originalBtnText;
                     }
                 })
                 .withFailureHandler(function(error) {
                     hideLoading();
-                    showNotification('Error: ' + error.message, 'error');
+                    showNotification('❌ Error: ' + error.message, 'error');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Guardar';
+                    submitBtn.textContent = originalBtnText;
                 })
                 .saveElemento(elemento, currentLaboratorio);
         }
@@ -2508,7 +2520,10 @@
             const submitBtn = document.getElementById('solicitudSubmitBtn');
             if (submitBtn.disabled) return; // Prevenir envíos múltiples
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Enviando...';
+            submitBtn.textContent = 'Procesando...';
+
+            showLoading('Creando solicitud...', 'Validando información');
+            updateLoadingProgress(10);
 
             try {
                 const materialesSeleccionados = [];
@@ -2521,11 +2536,14 @@
                 });
 
                 if (materialesSeleccionados.length === 0 && !document.getElementById('solicitudMaterialesExtra').value) {
-                    showNotification('Debe seleccionar al menos un material o describir materiales adicionales', 'error');
+                    hideLoading();
+                    showNotification('⚠️ Debe seleccionar al menos un material o describir materiales adicionales', 'error');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Enviar Solicitud';
                     return;
                 }
+
+                updateLoadingProgress(30);
 
                 const solicitud = {
                     nombre: document.getElementById('solicitudNombre').value,
@@ -2539,46 +2557,54 @@
                     estado: 'Pendiente'
                 };
 
+                updateLoadingProgress(50);
+
                 // Procesar documento si existe
                 const documentoFile = document.getElementById('solicitudDocumento').files[0];
                 if (documentoFile) {
+                    updateLoadingProgress(60, 'Procesando documento...', 'Subiendo archivo adjunto');
                     console.log('Procesando documento:', documentoFile.name);
                     solicitud.documentoPractica = await fileToBase64(documentoFile);
                 }
 
+                updateLoadingProgress(70);
+
                 // Procesar imágenes si existe
                 const imagenesFile = document.getElementById('solicitudImagenes').files[0];
                 if (imagenesFile) {
+                    updateLoadingProgress(75, 'Comprimiendo imagen...', 'Optimizando calidad');
                     console.log('Comprimiendo imagen:', imagenesFile.name);
                     solicitud.imagenesPractica = await compressImage(imagenesFile, 800, 0.7);
                 }
 
-                showLoading();
+                updateLoadingProgress(85, 'Enviando solicitud...', 'Notificando al preparador');
+
                 google.script.run
                     .withSuccessHandler(function(result) {
                         hideLoading();
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Enviar Solicitud';
                         if (result.success) {
-                            showNotification('Solicitud enviada correctamente');
+                            showNotification('✅ Solicitud enviada correctamente');
                             closeSolicitudModal();
                             loadMisSolicitudes();
                         } else {
-                            showNotification('Error al enviar solicitud: ' + (result.error || ''), 'error');
+                            showNotification('❌ Error al enviar solicitud: ' + (result.error || ''), 'error');
                         }
                     })
                     .withFailureHandler(function(error) {
                         hideLoading();
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Enviar Solicitud';
-                        showNotification('Error: ' + error.message, 'error');
+                        showNotification('❌ Error: ' + error.message, 'error');
                     })
                     .saveSolicitud(solicitud, currentLaboratorio);
             } catch (error) {
                 console.error('Error al procesar solicitud:', error);
+                hideLoading();
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Enviar Solicitud';
-                showNotification('Error al procesar archivos: ' + error.message, 'error');
+                showNotification('❌ Error al procesar archivos: ' + error.message, 'error');
             }
         }
 
@@ -2607,6 +2633,15 @@
         function marcarPreparada(event) {
             event.preventDefault();
 
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            if (submitBtn.disabled) return; // Prevenir envíos múltiples
+            submitBtn.disabled = true;
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.textContent = 'Procesando...';
+
+            showLoading('Preparando solicitud...', 'Procesando información');
+            updateLoadingProgress(20);
+
             const id = document.getElementById('prepararSolicitudId').value;
             const foto = document.getElementById('prepararFoto').files[0];
             const observaciones = document.getElementById('prepararObservaciones').value;
@@ -2618,33 +2653,45 @@
             };
 
             if (foto) {
+                updateLoadingProgress(40, 'Procesando foto...', 'Cargando imagen');
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     data.foto = e.target.result;
-                    submitPreparada(data);
+                    updateLoadingProgress(60, 'Marcando como preparada...', 'Enviando notificación al docente');
+                    submitPreparada(data, submitBtn, originalBtnText);
+                };
+                reader.onerror = function() {
+                    hideLoading();
+                    showNotification('❌ Error al procesar la foto', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalBtnText;
                 };
                 reader.readAsDataURL(foto);
             } else {
-                submitPreparada(data);
+                updateLoadingProgress(60, 'Marcando como preparada...', 'Enviando notificación al docente');
+                submitPreparada(data, submitBtn, originalBtnText);
             }
         }
 
-        function submitPreparada(data) {
-            showLoading();
+        function submitPreparada(data, submitBtn, originalBtnText) {
             google.script.run
                 .withSuccessHandler(function(result) {
                     hideLoading();
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalBtnText;
                     if (result.success) {
-                        showNotification('Solicitud marcada como preparada');
+                        showNotification('✅ Solicitud marcada como preparada y docente notificado');
                         closePrepararModal();
                         loadAllSolicitudes();
                     } else {
-                        showNotification('Error al actualizar solicitud', 'error');
+                        showNotification('❌ Error al actualizar solicitud', 'error');
                     }
                 })
                 .withFailureHandler(function(error) {
                     hideLoading();
-                    showNotification('Error: ' + error.message, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalBtnText;
+                    showNotification('❌ Error: ' + error.message, 'error');
                 })
                 .marcarSolicitudPreparada(data, currentLaboratorio);
         }
