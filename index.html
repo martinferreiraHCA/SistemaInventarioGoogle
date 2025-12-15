@@ -1660,8 +1660,9 @@
             loadMenu();
             loadCategorias(); // Cargar categorías para el selector dinámico
             loadInventario();
+            loadEstadisticas(); // Cargar estadísticas para todos los usuarios (se muestran en inventario)
+
             if (currentUser.rol === 'Preparador' || currentUser.rol === 'Admin') {
-                loadEstadisticas();
                 loadAltasBajas();
                 loadBitacora();
                 loadUsuarios();
@@ -1703,8 +1704,9 @@
                 // Recargar datos del nuevo laboratorio
                 loadCategorias(); // Cargar categorías del nuevo laboratorio
                 loadInventario();
+                loadEstadisticas(); // Cargar estadísticas para todos los usuarios (se muestran en inventario)
+
                 if (currentUser.rol === 'Admin' || currentUser.rol === 'Preparador') {
-                    loadEstadisticas();
                     loadAltasBajas();
                     loadBitacora();
                     loadAllSolicitudes();
@@ -2986,17 +2988,14 @@
         // ==================== ESTADÍSTICAS ====================
 
         function loadEstadisticas() {
-            showLoading();
             google.script.run
                 .withSuccessHandler(function(stats) {
-                    hideLoading();
                     if (stats) {
                         estadisticas = stats;
                         displayEstadisticas(stats);
                     }
                 })
                 .withFailureHandler(function(error) {
-                    hideLoading();
                     console.error('Error al cargar estadísticas:', error);
                 })
                 .getEstadisticasInventario(currentLaboratorio);
