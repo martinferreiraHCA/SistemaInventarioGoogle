@@ -1601,7 +1601,9 @@ function marcarSolicitudPreparada(data, laboratorio) {
         const fechaFinAmigable = formatFechaAmigable(fechaFin);
 
         // Formatear múltiples días seleccionados
-        const fechasArray = fechaNecesaria.split(',').map(f => f.trim());
+        // Convertir fechaNecesaria a string primero (puede venir como Date object de Sheets)
+        const fechaNecesariaStr = typeof fechaNecesaria === 'string' ? fechaNecesaria : formatDate(fechaNecesaria);
+        const fechasArray = fechaNecesariaStr.split(',').map(f => f.trim());
         const fechasFormateadas = fechasArray.map(f => formatFechaAmigable(f));
         const diasNecesariosTexto = fechasFormateadas.map(f => `  • ${f}`).join('\n');
 
