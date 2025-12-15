@@ -1583,13 +1583,50 @@ function marcarSolicitudPreparada(data, laboratorio) {
         // Agregar entrada automática en bitácora
         addBitacoraFromSolicitud(solicitud, data.preparador || 'Preparador', lab);
 
-        // Enviar notificación al docente
+        // Enviar notificación detallada al docente
         const docenteEmail = sheetData[i][8];
         const nombrePractica = sheetData[i][1];
+        const nombreDocente = sheetData[i][7];
+        const fechaInicio = sheetData[i][2];
+        const fechaFin = sheetData[i][3];
+        const fechaNecesaria = sheetData[i][4];
+        const materiales = sheetData[i][5];
+        const materialesExtra = sheetData[i][6] || 'Ninguno';
+        const observacionesPreparador = data.observaciones || 'Sin observaciones';
+
+        // Construir email con todos los detalles
+        const emailBody = `Estimado/a ${nombreDocente},
+
+Le informamos que su solicitud de materiales ha sido preparada y está lista para su uso.
+
+📋 DETALLES DE LA SOLICITUD:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔬 Práctica: ${nombrePractica}
+📅 Fecha de inicio: ${fechaInicio}
+📅 Fecha de fin: ${fechaFin}
+📅 Fecha necesaria: ${fechaNecesaria}
+🧪 Laboratorio: ${lab}
+
+📦 MATERIALES PREPARADOS:
+${materiales}
+
+${materialesExtra !== 'Ninguno' ? '📦 Materiales adicionales:\n' + materialesExtra + '\n\n' : ''}💬 OBSERVACIONES DEL PREPARADOR:
+${observacionesPreparador}
+
+${fotoURL ? '📷 Puede ver la foto del material preparado en el sistema.' : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Por favor, confirme la recepción de este correo y coordine con el preparador para el retiro de los materiales.
+
+Saludos,
+Sistema de Gestión de Laboratorio`;
+
         sendNotification(
           docenteEmail,
-          'Práctica Lista',
-          'Su solicitud "' + nombrePractica + '" ha sido preparada y está lista para usar.'
+          '✅ Práctica Preparada: ' + nombrePractica,
+          emailBody
         );
 
         return { success: true };

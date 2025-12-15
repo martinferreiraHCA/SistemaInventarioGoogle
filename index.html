@@ -1039,7 +1039,29 @@
                 <div class="header">
                     <h1>Gestión de Solicitudes</h1>
                 </div>
-                <div class="requests-grid" id="todasSolicitudes"></div>
+
+                <!-- Solicitudes A Preparar -->
+                <div style="margin-bottom: 30px;">
+                    <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: var(--azul-principal); display: flex; align-items: center; gap: 8px;">
+                        ⏳ A Preparar
+                        <span id="contadorAPpreparar" style="background: var(--amarillo); color: white; padding: 2px 12px; border-radius: 12px; font-size: 14px; font-weight: 700;">0</span>
+                    </h2>
+                    <div class="requests-grid" id="solicitudesAPreparar"></div>
+                </div>
+
+                <!-- Solicitudes Preparadas (Colapsable) -->
+                <div style="margin-top: 30px; border-top: 2px solid var(--gris-medio); padding-top: 20px;">
+                    <div onclick="togglePreparadas()" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gris-claro); border-radius: 6px; margin-bottom: 16px;">
+                        <h2 style="font-size: 18px; font-weight: 600; margin: 0; color: var(--verde); display: flex; align-items: center; gap: 8px;">
+                            ✅ Preparadas
+                            <span id="contadorPreparadas" style="background: var(--verde); color: white; padding: 2px 12px; border-radius: 12px; font-size: 14px; font-weight: 700;">0</span>
+                        </h2>
+                        <span id="toggleIconPreparadas" style="font-size: 24px; transition: transform 0.3s;">▼</span>
+                    </div>
+                    <div id="solicitudesPreparadasContainer" style="display: none;">
+                        <div class="requests-grid" id="solicitudesPreparadas"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Vista: Usuarios -->
@@ -1285,11 +1307,17 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Laboratorio *</label>
-                    <select id="usuarioLaboratorio" required>
-                        <option value="STEM">STEM</option>
-                        <option value="Bio-Química">Bio-Química</option>
-                    </select>
+                    <label>Laboratorios * (puede seleccionar múltiples)</label>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="usuarioLabSTEM" value="STEM" class="laboratorio-checkbox" style="cursor: pointer; width: 18px; height: 18px;">
+                            <span>🔬 STEM</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="usuarioLabBio" value="Bio-Química" class="laboratorio-checkbox" style="cursor: pointer; width: 18px; height: 18px;">
+                            <span>🧪 Bio-Química</span>
+                        </label>
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn close-modal" onclick="closeUsuarioModal()">Cancelar</button>
@@ -2345,31 +2373,86 @@
         }
 
         function displayAllSolicitudes(items) {
-            const container = document.getElementById('todasSolicitudes');
             if (!items || items.length === 0) {
-                container.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">No hay solicitudes</p>';
+                document.getElementById('solicitudesAPreparar').innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">No hay solicitudes pendientes</p>';
+                document.getElementById('solicitudesPreparadas').innerHTML = '<p style="text-align: center; padding: 20px; color: #999;">No hay solicitudes preparadas</p>';
+                document.getElementById('contadorAPpreparar').textContent = '0';
+                document.getElementById('contadorPreparadas').textContent = '0';
                 return;
             }
 
-            let html = '';
-            items.forEach(item => {
-                html += `<div class="request-card">
-                    <h3>${item.nombre}</h3>
-                    <div class="request-info"><strong>Docente:</strong> ${item.docente}</div>
-                    <div class="request-info"><strong>Fecha Inicio:</strong> ${item.fechaInicio}</div>
-                    <div class="request-info"><strong>Fecha Fin:</strong> ${item.fechaFin}</div>
-                    <div class="request-info"><strong>Fecha Necesaria:</strong> ${item.fechaNecesaria}</div>
-                    <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
-                    ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
-                    ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
-                    ${item.imagenesPractica ? `<div class="request-info"><strong>🖼️ Imagen:</strong> <a href="${item.imagenesPractica}" target="_blank" style="color: var(--azul-principal);">Ver imagen</a></div>` : ''}
-                    <span class="request-status ${item.estado.toLowerCase()}">${item.estado}</span>
-                    ${item.estado === 'Pendiente' ? `<br><button class="btn btn-success" style="margin-top: 10px;" onclick='openPrepararModal(${JSON.stringify(item).replace(/'/g, "&apos;")})'>Marcar como Preparada</button>` : ''}
-                    ${item.fotoPreparada ? `<div style="margin-top: 10px;"><img src="${item.fotoPreparada}" style="max-width: 100%;"></div>` : ''}
-                </div>`;
-            });
+            // Separar solicitudes por estado
+            const aPreparar = items.filter(item => item.estado === 'Pendiente');
+            const preparadas = items.filter(item => item.estado === 'Preparada');
 
-            container.innerHTML = html;
+            // Actualizar contadores
+            document.getElementById('contadorAPpreparar').textContent = aPreparar.length;
+            document.getElementById('contadorPreparadas').textContent = preparadas.length;
+
+            // Renderizar solicitudes A PREPARAR
+            const containerAPreparar = document.getElementById('solicitudesAPreparar');
+            if (aPreparar.length === 0) {
+                containerAPreparar.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">No hay solicitudes pendientes</p>';
+            } else {
+                let htmlAPreparar = '';
+                aPreparar.forEach(item => {
+                    htmlAPreparar += `<div class="request-card">
+                        <h3>${item.nombre}</h3>
+                        <div class="request-info"><strong>Docente:</strong> ${item.docente}</div>
+                        <div class="request-info"><strong>Email:</strong> ${item.docenteEmail}</div>
+                        <div class="request-info"><strong>Fecha Inicio:</strong> ${item.fechaInicio}</div>
+                        <div class="request-info"><strong>Fecha Fin:</strong> ${item.fechaFin}</div>
+                        <div class="request-info"><strong>Fecha Necesaria:</strong> ${item.fechaNecesaria}</div>
+                        <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
+                        ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
+                        ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
+                        ${item.imagenesPractica ? `<div class="request-info"><strong>🖼️ Imagen:</strong> <a href="${item.imagenesPractica}" target="_blank" style="color: var(--azul-principal);">Ver imagen</a></div>` : ''}
+                        <span class="request-status ${item.estado.toLowerCase()}">${item.estado}</span>
+                        <br><button class="btn btn-success" style="margin-top: 10px;" onclick='openPrepararModal(${JSON.stringify(item).replace(/'/g, "&apos;")})'>Marcar como Preparada</button>
+                    </div>`;
+                });
+                containerAPreparar.innerHTML = htmlAPreparar;
+            }
+
+            // Renderizar solicitudes PREPARADAS
+            const containerPreparadas = document.getElementById('solicitudesPreparadas');
+            if (preparadas.length === 0) {
+                containerPreparadas.innerHTML = '<p style="text-align: center; padding: 20px; color: #999;">No hay solicitudes preparadas</p>';
+            } else {
+                let htmlPreparadas = '';
+                preparadas.forEach(item => {
+                    htmlPreparadas += `<div class="request-card">
+                        <h3>${item.nombre}</h3>
+                        <div class="request-info"><strong>Docente:</strong> ${item.docente}</div>
+                        <div class="request-info"><strong>Email:</strong> ${item.docenteEmail}</div>
+                        <div class="request-info"><strong>Fecha Inicio:</strong> ${item.fechaInicio}</div>
+                        <div class="request-info"><strong>Fecha Fin:</strong> ${item.fechaFin}</div>
+                        <div class="request-info"><strong>Fecha Necesaria:</strong> ${item.fechaNecesaria}</div>
+                        <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
+                        ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
+                        ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
+                        ${item.imagenesPractica ? `<div class="request-info"><strong>🖼️ Imagen:</strong> <a href="${item.imagenesPractica}" target="_blank" style="color: var(--azul-principal);">Ver imagen</a></div>` : ''}
+                        <span class="request-status ${item.estado.toLowerCase()}">${item.estado}</span>
+                        ${item.fotoPreparada ? `<div style="margin-top: 10px;"><img src="${item.fotoPreparada}" style="max-width: 100%; border-radius: 6px;"></div>` : ''}
+                        ${item.observacionesPreparador ? `<div class="request-info" style="margin-top: 10px;"><strong>Observaciones del preparador:</strong> ${item.observacionesPreparador}</div>` : ''}
+                    </div>`;
+                });
+                containerPreparadas.innerHTML = htmlPreparadas;
+            }
+        }
+
+        // Toggle para mostrar/ocultar solicitudes preparadas
+        function togglePreparadas() {
+            const container = document.getElementById('solicitudesPreparadasContainer');
+            const icon = document.getElementById('toggleIconPreparadas');
+
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                container.style.display = 'none';
+                icon.style.transform = 'rotate(0deg)';
+            }
         }
 
         function openNuevaSolicitudModal() {
@@ -2600,11 +2683,18 @@
                 <tbody>`;
 
             items.forEach(item => {
+                // Mostrar laboratorios con iconos
+                const labs = (item.laboratorio || 'STEM').split(',').map(lab => lab.trim());
+                const labDisplay = labs.map(lab => {
+                    const icon = lab === 'Bio-Química' ? '🧪' : '🔬';
+                    return `${icon} ${lab}`;
+                }).join(', ');
+
                 html += `<tr>
                     <td>${item.nombre}</td>
                     <td>${item.email}</td>
                     <td>${item.rol}</td>
-                    <td>${item.laboratorio || 'STEM'}</td>
+                    <td>${labDisplay}</td>
                     <td>
                         <button class="action-btn edit" onclick='editUsuario(${JSON.stringify(item)})'>Editar</button>
                         <button class="action-btn delete" onclick="deleteUsuario('${item.id}')">Eliminar</button>
@@ -2620,6 +2710,8 @@
             document.getElementById('usuarioModalTitle').textContent = 'Nuevo Usuario';
             document.getElementById('usuarioForm').reset();
             document.getElementById('usuarioId').value = '';
+            // Limpiar todos los checkboxes
+            document.querySelectorAll('.laboratorio-checkbox').forEach(cb => cb.checked = false);
             document.getElementById('usuarioModal').classList.add('active');
         }
 
@@ -2630,7 +2722,14 @@
             document.getElementById('usuarioEmail').value = usuario.email;
             document.getElementById('usuarioPassword').value = usuario.password;
             document.getElementById('usuarioRol').value = usuario.rol;
-            document.getElementById('usuarioLaboratorio').value = usuario.laboratorio || 'STEM';
+
+            // Parsear laboratorios: puede ser string simple o separados por comas
+            const laboratorios = (usuario.laboratorio || 'STEM').split(',').map(lab => lab.trim());
+
+            // Marcar checkboxes correspondientes
+            document.getElementById('usuarioLabSTEM').checked = laboratorios.includes('STEM');
+            document.getElementById('usuarioLabBio').checked = laboratorios.includes('Bio-Química');
+
             document.getElementById('usuarioModal').classList.add('active');
         }
 
@@ -2641,16 +2740,31 @@
         function saveUsuario(event) {
             event.preventDefault();
 
+            // Obtener laboratorios seleccionados
+            const labsSeleccionados = [];
+            if (document.getElementById('usuarioLabSTEM').checked) {
+                labsSeleccionados.push('STEM');
+            }
+            if (document.getElementById('usuarioLabBio').checked) {
+                labsSeleccionados.push('Bio-Química');
+            }
+
+            // Validar que al menos un laboratorio esté seleccionado
+            if (labsSeleccionados.length === 0) {
+                showNotification('Debe seleccionar al menos un laboratorio', 'error');
+                return;
+            }
+
             const usuario = {
                 id: document.getElementById('usuarioId').value,
                 nombre: document.getElementById('usuarioNombre').value,
                 email: document.getElementById('usuarioEmail').value,
                 password: document.getElementById('usuarioPassword').value,
                 rol: document.getElementById('usuarioRol').value,
-                laboratorio: document.getElementById('usuarioLaboratorio').value
+                laboratorio: labsSeleccionados.join(',') // Unir con comas
             };
 
-            showLoading();
+            showLoading('Guardando usuario...', 'Actualizando información');
             google.script.run
                 .withSuccessHandler(function(result) {
                     hideLoading();
