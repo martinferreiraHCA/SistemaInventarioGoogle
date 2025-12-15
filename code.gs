@@ -1596,6 +1596,15 @@ function marcarSolicitudPreparada(data, laboratorio) {
 
         Logger.log('Intentando enviar email a: ' + docenteEmail);
 
+        // Formatear fechas de manera amigable
+        const fechaInicioAmigable = formatFechaAmigable(fechaInicio);
+        const fechaFinAmigable = formatFechaAmigable(fechaFin);
+
+        // Formatear múltiples días seleccionados
+        const fechasArray = fechaNecesaria.split(',').map(f => f.trim());
+        const fechasFormateadas = fechasArray.map(f => formatFechaAmigable(f));
+        const diasNecesariosTexto = fechasFormateadas.map(f => `  • ${f}`).join('\n');
+
         // Construir email con todos los detalles
         const emailBody = `Estimado/a ${nombreDocente},
 
@@ -1605,9 +1614,9 @@ Le informamos que su solicitud de materiales ha sido preparada y está lista par
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🔬 Práctica: ${nombrePractica}
-📅 Fecha de inicio: ${fechaInicio}
-📅 Fecha de fin: ${fechaFin}
-📅 Fecha necesaria: ${fechaNecesaria}
+📅 Período de uso: Desde ${fechaInicioAmigable} hasta ${fechaFinAmigable}
+📅 Días solicitados:
+${diasNecesariosTexto}
 🧪 Laboratorio: ${lab}
 
 📦 MATERIALES PREPARADOS:
@@ -1616,8 +1625,6 @@ ${materiales}
 ${materialesExtra !== 'Ninguno' ? '📦 Materiales adicionales:\n' + materialesExtra + '\n\n' : ''}💬 OBSERVACIONES DEL PREPARADOR:
 ${observacionesPreparador}
 
-${fotoURL ? '📷 Puede ver la foto del material preparado en el sistema.' : ''}
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Por favor, confirme la recepción de este correo y coordine con el preparador para el retiro de los materiales.
@@ -1625,11 +1632,12 @@ Por favor, confirme la recepción de este correo y coordine con el preparador pa
 Saludos,
 Sistema de Gestión de Laboratorio`;
 
-        // Enviar notificación y capturar resultado
+        // Enviar notificación y capturar resultado (incluir foto si existe)
         const emailResult = sendNotification(
           docenteEmail,
           '✅ Práctica Preparada: ' + nombrePractica,
-          emailBody
+          emailBody,
+          { fotoURL: fotoURL || null }
         );
 
         if (emailResult.success) {
@@ -1806,6 +1814,32 @@ function deleteUsuario(id) {
 // ==================== NOTIFICACIONES ====================
 
 /**
+ * Formatea una fecha en español de manera amigable
+ * Ejemplo: "2025-12-15" -> "Lunes, 15 de Diciembre de 2025"
+ */
+function formatFechaAmigable(fechaStr) {
+  try {
+    if (!fechaStr) return '';
+
+    const fecha = new Date(fechaStr + 'T00:00:00'); // Forzar zona horaria local
+
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+    const diaSemana = diasSemana[fecha.getDay()];
+    const dia = fecha.getDate();
+    const mes = meses[fecha.getMonth()];
+    const año = fecha.getFullYear();
+
+    return `${diaSemana}, ${dia} de ${mes} de ${año}`;
+  } catch (error) {
+    Logger.log('Error al formatear fecha: ' + error);
+    return fechaStr; // Retornar formato original si falla
+  }
+}
+
+/**
  * Función de prueba para verificar envío de emails
  * EJECUTAR MANUALMENTE desde el editor de Apps Script
  */
@@ -1823,8 +1857,12 @@ function testSendEmail() {
 
 /**
  * Envía una notificación por email
+ * @param {string} email - Destinatario
+ * @param {string} subject - Asunto
+ * @param {string} body - Cuerpo del mensaje en texto plano
+ * @param {object} options - Opciones adicionales { fotoURL: string }
  */
-function sendNotification(email, subject, body) {
+function sendNotification(email, subject, body, options) {
   try {
     // Validar que el email no esté vacío
     if (!email || email.trim() === '') {
@@ -1835,8 +1873,21 @@ function sendNotification(email, subject, body) {
     Logger.log('Enviando email a: ' + email);
     Logger.log('Asunto: ' + subject);
 
+    options = options || {};
+
     // Convertir saltos de línea a HTML
     const htmlBody = body.replace(/\n/g, '<br>');
+
+    // Agregar foto si está disponible
+    let fotoHtml = '';
+    if (options.fotoURL) {
+      fotoHtml = `
+        <div style="margin: 20px 0; text-align: center;">
+          <p style="font-weight: bold; color: #242B59; margin-bottom: 10px;">📷 Material Preparado:</p>
+          <img src="${options.fotoURL}" alt="Material Preparado" style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        </div>
+      `;
+    }
 
     MailApp.sendEmail({
       to: email,
@@ -1849,6 +1900,7 @@ function sendNotification(email, subject, body) {
             <div style="color: #252525; line-height: 1.6; white-space: pre-wrap; font-family: monospace; font-size: 13px;">
               ${htmlBody}
             </div>
+            ${fotoHtml}
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="color: #888; font-size: 12px;">Sistema de Gestión de Laboratorio</p>
           </div>
