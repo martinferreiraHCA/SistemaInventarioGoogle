@@ -1217,15 +1217,17 @@
                 </div>
                 <div class="form-group">
                     <label>Fecha de Inicio *</label>
-                    <input type="date" id="solicitudFechaInicio" required>
+                    <input type="date" id="solicitudFechaInicio" required onchange="generarDiasDisponibles()">
                 </div>
                 <div class="form-group">
                     <label>Fecha de Fin Aproximada *</label>
-                    <input type="date" id="solicitudFechaFin" required>
+                    <input type="date" id="solicitudFechaFin" required onchange="generarDiasDisponibles()">
                 </div>
                 <div class="form-group">
-                    <label>Fecha Necesaria *</label>
-                    <input type="date" id="solicitudFechaNecesaria" required>
+                    <label>Días que necesita el material * (seleccione uno o varios)</label>
+                    <div id="diasNecesarios" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); padding: 12px; border-radius: 4px; background: var(--gris-claro);">
+                        <p style="color: #999; text-align: center; padding: 20px;">Seleccione primero las fechas de inicio y fin</p>
+                    </div>
                 </div>
                 <div class="materials-selector">
                     <h4>Materiales del Inventario</h4>
@@ -2359,6 +2361,43 @@
                 .getAllSolicitudes(currentLaboratorio);
         }
 
+        // Función para formatear múltiples días seleccionados
+        function formatearDiasNecesarios(fechasStr) {
+            if (!fechasStr) return '';
+
+            const fechas = fechasStr.split(',').map(f => f.trim());
+            if (fechas.length === 1) {
+                // Si es solo una fecha, mostrar normal
+                return formatearFechaAmigable(fechas[0]);
+            }
+
+            // Si son múltiples, mostrar como lista
+            const fechasFormateadas = fechas.map(f => formatearFechaAmigable(f));
+            return '<ul style="margin: 5px 0; padding-left: 20px;">' +
+                   fechasFormateadas.map(f => `<li>${f}</li>`).join('') +
+                   '</ul>';
+        }
+
+        // Función para formatear una fecha en español amigable
+        function formatearFechaAmigable(fechaStr) {
+            try {
+                if (!fechaStr) return '';
+                const fecha = new Date(fechaStr + 'T00:00:00');
+                const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                              'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+                const diaSemana = diasSemana[fecha.getDay()];
+                const dia = fecha.getDate();
+                const mes = meses[fecha.getMonth()];
+                const año = fecha.getFullYear();
+
+                return `${diaSemana}, ${dia} de ${mes} de ${año}`;
+            } catch (error) {
+                return fechaStr;
+            }
+        }
+
         function displayMisSolicitudes(items) {
             const container = document.getElementById('misSolicitudes');
             if (!items || items.length === 0) {
@@ -2372,7 +2411,7 @@
                     <h3>${item.nombre}</h3>
                     <div class="request-info"><strong>Fecha Inicio:</strong> ${item.fechaInicio}</div>
                     <div class="request-info"><strong>Fecha Fin:</strong> ${item.fechaFin}</div>
-                    <div class="request-info"><strong>Fecha Necesaria:</strong> ${item.fechaNecesaria}</div>
+                    <div class="request-info"><strong>Días Solicitados:</strong> ${formatearDiasNecesarios(item.fechaNecesaria)}</div>
                     <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
                     ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
                     ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
@@ -2416,7 +2455,7 @@
                         <div class="request-info"><strong>Email:</strong> ${item.docenteEmail}</div>
                         <div class="request-info"><strong>Fecha Inicio:</strong> ${item.fechaInicio}</div>
                         <div class="request-info"><strong>Fecha Fin:</strong> ${item.fechaFin}</div>
-                        <div class="request-info"><strong>Fecha Necesaria:</strong> ${item.fechaNecesaria}</div>
+                        <div class="request-info"><strong>Días Solicitados:</strong> ${formatearDiasNecesarios(item.fechaNecesaria)}</div>
                         <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
                         ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
                         ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
@@ -2441,7 +2480,7 @@
                         <div class="request-info"><strong>Email:</strong> ${item.docenteEmail}</div>
                         <div class="request-info"><strong>Fecha Inicio:</strong> ${item.fechaInicio}</div>
                         <div class="request-info"><strong>Fecha Fin:</strong> ${item.fechaFin}</div>
-                        <div class="request-info"><strong>Fecha Necesaria:</strong> ${item.fechaNecesaria}</div>
+                        <div class="request-info"><strong>Días Solicitados:</strong> ${formatearDiasNecesarios(item.fechaNecesaria)}</div>
                         <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
                         ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
                         ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
@@ -2477,6 +2516,52 @@
 
         function closeSolicitudModal() {
             document.getElementById('solicitudModal').classList.remove('active');
+        }
+
+        // Generar días disponibles basados en el rango de fechas
+        function generarDiasDisponibles() {
+            const fechaInicio = document.getElementById('solicitudFechaInicio').value;
+            const fechaFin = document.getElementById('solicitudFechaFin').value;
+            const container = document.getElementById('diasNecesarios');
+
+            if (!fechaInicio || !fechaFin) {
+                container.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Seleccione primero las fechas de inicio y fin</p>';
+                return;
+            }
+
+            const inicio = new Date(fechaInicio + 'T00:00:00');
+            const fin = new Date(fechaFin + 'T00:00:00');
+
+            if (inicio > fin) {
+                container.innerHTML = '<p style="color: var(--rojo); text-align: center; padding: 20px;">La fecha de inicio debe ser anterior a la fecha de fin</p>';
+                return;
+            }
+
+            const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                           'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+            let html = '<p style="margin-bottom: 10px; font-weight: 600; color: var(--azul-principal);">Seleccione los días que necesita:</p>';
+
+            let fechaActual = new Date(inicio);
+            while (fechaActual <= fin) {
+                const diaSemana = diasSemana[fechaActual.getDay()];
+                const dia = fechaActual.getDate();
+                const mes = meses[fechaActual.getMonth()];
+                const año = fechaActual.getFullYear();
+                const fechaStr = fechaActual.toISOString().split('T')[0];
+
+                html += `
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-radius: 4px; background: white; margin-bottom: 4px;">
+                        <input type="checkbox" name="diaNecesario" value="${fechaStr}" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span style="flex: 1;">${diaSemana}, ${dia} de ${mes} de ${año}</span>
+                    </label>
+                `;
+
+                fechaActual.setDate(fechaActual.getDate() + 1);
+            }
+
+            container.innerHTML = html;
         }
 
         function loadMaterialesSelector() {
@@ -2545,11 +2630,23 @@
 
                 updateLoadingProgress(30);
 
+                // Recopilar días necesarios seleccionados
+                const diasCheckboxes = document.querySelectorAll('input[name="diaNecesario"]:checked');
+                const diasSeleccionados = Array.from(diasCheckboxes).map(cb => cb.value);
+
+                if (diasSeleccionados.length === 0) {
+                    hideLoading();
+                    showNotification('⚠️ Debe seleccionar al menos un día en que necesita el material', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Enviar Solicitud';
+                    return;
+                }
+
                 const solicitud = {
                     nombre: document.getElementById('solicitudNombre').value,
                     fechaInicio: document.getElementById('solicitudFechaInicio').value,
                     fechaFin: document.getElementById('solicitudFechaFin').value,
-                    fechaNecesaria: document.getElementById('solicitudFechaNecesaria').value,
+                    fechaNecesaria: diasSeleccionados.join(','), // Guardar como string separado por comas
                     materiales: materialesSeleccionados.join(', '),
                     materialesExtra: document.getElementById('solicitudMaterialesExtra').value,
                     docente: currentUser.nombre,
