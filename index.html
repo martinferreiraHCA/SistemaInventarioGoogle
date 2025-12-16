@@ -1239,18 +1239,18 @@
                     <textarea id="solicitudMaterialesExtra" placeholder="Describa materiales adicionales necesarios"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Documentos de la Práctica (PDF, Word, etc.)</label>
+                    <label>Documentos de la Práctica (PDF, Word, etc.) - Opcional</label>
                     <input type="file" id="solicitudDocumento" accept=".pdf,.doc,.docx,.txt" multiple onchange="agregarDocumentos(this)" style="display: block; margin-bottom: 10px;">
-                    <small style="color: #999; display: block; margin-bottom: 10px;">Opcional: Selecciona uno o varios documentos. Puedes agregar más después.</small>
+                    <small style="color: #ff9800; display: block; margin-bottom: 10px; font-weight: 500;">⚠️ Máximo 3 archivos totales (docs + imágenes). Máx 2MB por documento. Cada archivo agrega ~10s al envío.</small>
                     <div id="documentosPreview" style="display: none; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 8px;">
                         <strong style="font-size: 12px; color: #666;">Archivos agregados:</strong>
                         <div id="documentosList" style="margin-top: 8px;"></div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Imágenes de Referencia</label>
+                    <label>Imágenes de Referencia - Opcional</label>
                     <input type="file" id="solicitudImagenes" accept="image/*" multiple onchange="agregarImagenes(this)" style="display: block; margin-bottom: 10px;">
-                    <small style="color: #999; display: block; margin-bottom: 10px;">Opcional: Selecciona una o varias imágenes. Puedes agregar más después.</small>
+                    <small style="color: #ff9800; display: block; margin-bottom: 10px; font-weight: 500;">⚠️ Máximo 3 archivos totales (docs + imágenes). Máx 5MB por imagen. Cada archivo agrega ~10s al envío.</small>
                     <div id="imagenesPreview" style="display: none; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 8px;">
                         <strong style="font-size: 12px; color: #666;">Imágenes agregadas:</strong>
                         <div id="imagenesList" style="margin-top: 8px;"></div>
@@ -2569,18 +2569,20 @@
             const files = Array.from(input.files);
             if (files.length === 0) return;
 
-            // Limitar cantidad total de documentos
-            const totalDespues = documentosSeleccionados.length + files.length;
-            if (totalDespues > 5) {
-                showNotification('⚠️ Máximo 5 documentos por solicitud. Actualmente tienes ' + documentosSeleccionados.length, 'error');
+            // Limitar cantidad TOTAL de archivos (documentos + imágenes combinados)
+            const totalArchivos = documentosSeleccionados.length + imagenesSeleccionadas.length;
+            const totalDespues = totalArchivos + files.length;
+
+            if (totalDespues > 3) {
+                showNotification('⚠️ Máximo 3 archivos en total (documentos + imágenes). Actualmente tienes ' + totalArchivos + ' archivos.', 'error');
                 input.value = '';
                 return;
             }
 
-            // Validar tamaño máximo por archivo (5MB)
-            const archivosGrandes = files.filter(f => f.size > 5 * 1024 * 1024);
+            // Validar tamaño máximo por archivo (2MB)
+            const archivosGrandes = files.filter(f => f.size > 2 * 1024 * 1024);
             if (archivosGrandes.length > 0) {
-                showNotification('⚠️ Algunos archivos superan los 5MB. Reduce el tamaño o contacta al administrador.', 'error');
+                showNotification('⚠️ Documentos máximo 2MB cada uno. Comprime o divide el archivo.', 'error');
                 input.value = '';
                 return;
             }
@@ -2595,6 +2597,11 @@
 
             actualizarPreviewDocumentos();
             input.value = ''; // Limpiar input para permitir seleccionar más
+
+            // Mostrar advertencia de tiempo
+            if (documentosSeleccionados.length + imagenesSeleccionadas.length >= 2) {
+                showNotification('ℹ️ Archivos adjuntos aumentan el tiempo de envío (~10s por archivo)', 'warning');
+            }
         }
 
         // Agregar imágenes al array
@@ -2602,18 +2609,20 @@
             const files = Array.from(input.files);
             if (files.length === 0) return;
 
-            // Limitar cantidad total de imágenes
-            const totalDespues = imagenesSeleccionadas.length + files.length;
-            if (totalDespues > 5) {
-                showNotification('⚠️ Máximo 5 imágenes por solicitud. Actualmente tienes ' + imagenesSeleccionadas.length, 'error');
+            // Limitar cantidad TOTAL de archivos (documentos + imágenes combinados)
+            const totalArchivos = documentosSeleccionados.length + imagenesSeleccionadas.length;
+            const totalDespues = totalArchivos + files.length;
+
+            if (totalDespues > 3) {
+                showNotification('⚠️ Máximo 3 archivos en total (documentos + imágenes). Actualmente tienes ' + totalArchivos + ' archivos.', 'error');
                 input.value = '';
                 return;
             }
 
-            // Validar tamaño máximo por imagen (10MB antes de comprimir)
-            const imagenesGrandes = files.filter(f => f.size > 10 * 1024 * 1024);
+            // Validar tamaño máximo por imagen (5MB antes de comprimir)
+            const imagenesGrandes = files.filter(f => f.size > 5 * 1024 * 1024);
             if (imagenesGrandes.length > 0) {
-                showNotification('⚠️ Algunas imágenes superan los 10MB. Selecciona imágenes más pequeñas.', 'error');
+                showNotification('⚠️ Imágenes máximo 5MB. Selecciona imágenes más pequeñas.', 'error');
                 input.value = '';
                 return;
             }
@@ -2628,6 +2637,11 @@
 
             actualizarPreviewImagenes();
             input.value = ''; // Limpiar input para permitir seleccionar más
+
+            // Mostrar advertencia de tiempo
+            if (documentosSeleccionados.length + imagenesSeleccionadas.length >= 2) {
+                showNotification('ℹ️ Archivos adjuntos aumentan el tiempo de envío (~10s por archivo)', 'warning');
+            }
         }
 
         // Actualizar preview de documentos
@@ -2845,11 +2859,11 @@
 
                 // Procesar múltiples imágenes en paralelo (más rápido)
                 if (imagenesSeleccionadas.length > 0) {
-                    updateLoadingProgress(70, 'Comprimiendo imágenes...', `Optimizando ${imagenesSeleccionadas.length} imagen(es) - alta compresión`);
+                    updateLoadingProgress(70, 'Comprimiendo imágenes...', `Compresión máxima: ${imagenesSeleccionadas.length} imagen(es)`);
                     console.log('Comprimiendo imágenes en paralelo:', imagenesSeleccionadas.length);
 
-                    // Comprimir agresivamente para máxima velocidad (500px, calidad 0.4)
-                    const imagenesPromises = imagenesSeleccionadas.map(file => compressImage(file, 500, 0.4));
+                    // Comprimir MÁXIMO para velocidad (400px, calidad 0.3) - archivos ~40KB
+                    const imagenesPromises = imagenesSeleccionadas.map(file => compressImage(file, 400, 0.3));
                     const imagenesArray = await Promise.all(imagenesPromises);
 
                     solicitud.imagenesPractica = imagenesArray.join('|||');
