@@ -1240,13 +1240,21 @@
                 </div>
                 <div class="form-group">
                     <label>Documentos de la Práctica (PDF, Word, etc.)</label>
-                    <input type="file" id="solicitudDocumento" accept=".pdf,.doc,.docx,.txt" multiple>
-                    <small style="color: #999;">Opcional: Sube uno o varios documentos/planificación de la práctica</small>
+                    <input type="file" id="solicitudDocumento" accept=".pdf,.doc,.docx,.txt" multiple onchange="agregarDocumentos(this)" style="display: block; margin-bottom: 10px;">
+                    <small style="color: #999; display: block; margin-bottom: 10px;">Opcional: Selecciona uno o varios documentos. Puedes agregar más después.</small>
+                    <div id="documentosPreview" style="display: none; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 8px;">
+                        <strong style="font-size: 12px; color: #666;">Archivos agregados:</strong>
+                        <div id="documentosList" style="margin-top: 8px;"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Imágenes de Referencia</label>
-                    <input type="file" id="solicitudImagenes" accept="image/*" multiple>
-                    <small style="color: #999;">Opcional: Sube una o varias imágenes de referencia del montaje</small>
+                    <input type="file" id="solicitudImagenes" accept="image/*" multiple onchange="agregarImagenes(this)" style="display: block; margin-bottom: 10px;">
+                    <small style="color: #999; display: block; margin-bottom: 10px;">Opcional: Selecciona una o varias imágenes. Puedes agregar más después.</small>
+                    <div id="imagenesPreview" style="display: none; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 8px;">
+                        <strong style="font-size: 12px; color: #666;">Imágenes agregadas:</strong>
+                        <div id="imagenesList" style="margin-top: 8px;"></div>
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn close-modal" onclick="closeSolicitudModal()">Cancelar</button>
@@ -2533,14 +2541,121 @@
             }
         }
 
+        // Arrays temporales para archivos múltiples
+        let documentosSeleccionados = [];
+        let imagenesSeleccionadas = [];
+
         function openNuevaSolicitudModal() {
             document.getElementById('solicitudForm').reset();
+            // Limpiar arrays de archivos
+            documentosSeleccionados = [];
+            imagenesSeleccionadas = [];
+            // Limpiar preview
+            document.getElementById('documentosPreview').style.display = 'none';
+            document.getElementById('imagenesPreview').style.display = 'none';
+            document.getElementById('documentosList').innerHTML = '';
+            document.getElementById('imagenesList').innerHTML = '';
+
             document.getElementById('solicitudModal').classList.add('active');
             loadMaterialesSelector();
         }
 
         function closeSolicitudModal() {
             document.getElementById('solicitudModal').classList.remove('active');
+        }
+
+        // Agregar documentos al array
+        function agregarDocumentos(input) {
+            const files = Array.from(input.files);
+            if (files.length === 0) return;
+
+            files.forEach(file => {
+                // Verificar que no esté duplicado
+                const yaExiste = documentosSeleccionados.some(f => f.name === file.name && f.size === file.size);
+                if (!yaExiste) {
+                    documentosSeleccionados.push(file);
+                }
+            });
+
+            actualizarPreviewDocumentos();
+            input.value = ''; // Limpiar input para permitir seleccionar más
+        }
+
+        // Agregar imágenes al array
+        function agregarImagenes(input) {
+            const files = Array.from(input.files);
+            if (files.length === 0) return;
+
+            files.forEach(file => {
+                // Verificar que no esté duplicado
+                const yaExiste = imagenesSeleccionadas.some(f => f.name === file.name && f.size === file.size);
+                if (!yaExiste) {
+                    imagenesSeleccionadas.push(file);
+                }
+            });
+
+            actualizarPreviewImagenes();
+            input.value = ''; // Limpiar input para permitir seleccionar más
+        }
+
+        // Actualizar preview de documentos
+        function actualizarPreviewDocumentos() {
+            const previewContainer = document.getElementById('documentosPreview');
+            const listContainer = document.getElementById('documentosList');
+
+            if (documentosSeleccionados.length === 0) {
+                previewContainer.style.display = 'none';
+                return;
+            }
+
+            previewContainer.style.display = 'block';
+            let html = '';
+            documentosSeleccionados.forEach((file, index) => {
+                const sizeKB = (file.size / 1024).toFixed(1);
+                html += `
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: white; border-radius: 4px; margin-bottom: 4px;">
+                        <span style="flex: 1; font-size: 13px;">📄 ${file.name} <span style="color: #999;">(${sizeKB} KB)</span></span>
+                        <button type="button" onclick="eliminarDocumento(${index})" style="background: var(--rojo); color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">✕ Eliminar</button>
+                    </div>
+                `;
+            });
+            listContainer.innerHTML = html;
+        }
+
+        // Actualizar preview de imágenes
+        function actualizarPreviewImagenes() {
+            const previewContainer = document.getElementById('imagenesPreview');
+            const listContainer = document.getElementById('imagenesList');
+
+            if (imagenesSeleccionadas.length === 0) {
+                previewContainer.style.display = 'none';
+                return;
+            }
+
+            previewContainer.style.display = 'block';
+            let html = '';
+            imagenesSeleccionadas.forEach((file, index) => {
+                const sizeKB = (file.size / 1024).toFixed(1);
+                html += `
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: white; border-radius: 4px; margin-bottom: 4px;">
+                        <span style="flex: 1; font-size: 13px;">🖼️ ${file.name} <span style="color: #999;">(${sizeKB} KB)</span></span>
+                        <button type="button" onclick="eliminarImagen(${index})" style="background: var(--rojo); color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">✕ Eliminar</button>
+                    </div>
+                `;
+            });
+            listContainer.innerHTML = html;
+        }
+
+        // Eliminar documento específico
+        function eliminarDocumento(index) {
+            documentosSeleccionados.splice(index, 1);
+            actualizarPreviewDocumentos();
+        }
+
+        // Eliminar imagen específica
+        function eliminarImagen(index) {
+            imagenesSeleccionadas.splice(index, 1);
+            actualizarPreviewImagenes();
         }
 
         // Generar días disponibles basados en el rango de fechas
@@ -2681,32 +2796,30 @@
 
                 updateLoadingProgress(50);
 
-                // Procesar múltiples documentos si existen
-                const documentoFiles = document.getElementById('solicitudDocumento').files;
+                // Procesar múltiples documentos desde el array temporal
                 const documentosArray = [];
-                if (documentoFiles.length > 0) {
-                    updateLoadingProgress(55, 'Procesando documentos...', `Subiendo ${documentoFiles.length} archivo(s)`);
-                    for (let i = 0; i < documentoFiles.length; i++) {
-                        console.log('Procesando documento:', documentoFiles[i].name);
-                        const docBase64 = await fileToBase64(documentoFiles[i]);
+                if (documentosSeleccionados.length > 0) {
+                    updateLoadingProgress(55, 'Procesando documentos...', `Subiendo ${documentosSeleccionados.length} archivo(s)`);
+                    for (let i = 0; i < documentosSeleccionados.length; i++) {
+                        console.log('Procesando documento:', documentosSeleccionados[i].name);
+                        const docBase64 = await fileToBase64(documentosSeleccionados[i]);
                         documentosArray.push(docBase64);
-                        updateLoadingProgress(55 + (i + 1) / documentoFiles.length * 10);
+                        updateLoadingProgress(55 + (i + 1) / documentosSeleccionados.length * 10);
                     }
                     solicitud.documentoPractica = documentosArray.join('|||'); // Separador especial
                 }
 
                 updateLoadingProgress(65);
 
-                // Procesar múltiples imágenes si existen
-                const imagenesFiles = document.getElementById('solicitudImagenes').files;
+                // Procesar múltiples imágenes desde el array temporal
                 const imagenesArray = [];
-                if (imagenesFiles.length > 0) {
-                    updateLoadingProgress(70, 'Comprimiendo imágenes...', `Procesando ${imagenesFiles.length} imagen(es)`);
-                    for (let i = 0; i < imagenesFiles.length; i++) {
-                        console.log('Comprimiendo imagen:', imagenesFiles[i].name);
-                        const imgCompressed = await compressImage(imagenesFiles[i], 800, 0.7);
+                if (imagenesSeleccionadas.length > 0) {
+                    updateLoadingProgress(70, 'Comprimiendo imágenes...', `Procesando ${imagenesSeleccionadas.length} imagen(es)`);
+                    for (let i = 0; i < imagenesSeleccionadas.length; i++) {
+                        console.log('Comprimiendo imagen:', imagenesSeleccionadas[i].name);
+                        const imgCompressed = await compressImage(imagenesSeleccionadas[i], 800, 0.7);
                         imagenesArray.push(imgCompressed);
-                        updateLoadingProgress(70 + (i + 1) / imagenesFiles.length * 10);
+                        updateLoadingProgress(70 + (i + 1) / imagenesSeleccionadas.length * 10);
                     }
                     solicitud.imagenesPractica = imagenesArray.join('|||'); // Separador especial
                 }
