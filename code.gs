@@ -1518,8 +1518,8 @@ function saveSolicitud(solicitud, laboratorio) {
       imagenesURLs
     ]);
 
-    // Notificar a los preparadores
-    notificarNuevaSolicitud(solicitud);
+    // Notificar al preparador del laboratorio
+    notificarNuevaSolicitud(solicitud, lab);
 
     return { success: true };
   } catch (error) {
@@ -1531,18 +1531,72 @@ function saveSolicitud(solicitud, laboratorio) {
 /**
  * Notifica a los preparadores sobre una nueva solicitud
  */
-function notificarNuevaSolicitud(solicitud) {
+function notificarNuevaSolicitud(solicitud, laboratorio) {
   try {
-    const usuarios = getUsuarios();
-    const preparadores = usuarios.filter(u => u.rol === 'Preparador');
+    // Obtener email del preparador del laboratorio específico
+    const preparadorEmail = getPreparadorEmail(laboratorio);
 
-    preparadores.forEach(preparador => {
-      sendNotification(
-        preparador.email,
-        'Nueva Solicitud de Material',
-        `El docente ${solicitud.docente} ha solicitado materiales para la práctica "${solicitud.nombre}".\n\nFecha necesaria: ${solicitud.fechaNecesaria}`
-      );
-    });
+    if (!preparadorEmail) {
+      Logger.log('No se pudo enviar notificación: no hay preparador asignado al laboratorio ' + laboratorio);
+      return;
+    }
+
+    // Formatear fechas de manera amigable
+    const fechaInicioStr = typeof solicitud.fechaInicio === 'string' ? solicitud.fechaInicio : formatDate(solicitud.fechaInicio);
+    const fechaFinStr = typeof solicitud.fechaFin === 'string' ? solicitud.fechaFin : formatDate(solicitud.fechaFin);
+    const fechaInicioAmigable = formatFechaAmigable(fechaInicioStr);
+    const fechaFinAmigable = formatFechaAmigable(fechaFinStr);
+
+    // Formatear múltiples días seleccionados
+    const fechaNecesariaStr = typeof solicitud.fechaNecesaria === 'string' ? solicitud.fechaNecesaria : formatDate(solicitud.fechaNecesaria);
+    const fechasArray = fechaNecesariaStr.split(',').map(f => f.trim());
+    const fechasFormateadas = fechasArray.map(f => formatFechaAmigable(f));
+    const diasNecesariosTexto = fechasFormateadas.map(f => `  • ${f}`).join('\n');
+
+    const materialesExtra = solicitud.materialesExtra || 'Ninguno';
+
+    // Construir email para el preparador
+    const emailBody = `Estimado/a Preparador,
+
+Ha recibido una nueva solicitud de materiales para el laboratorio ${laboratorio}.
+
+📋 DETALLES DE LA SOLICITUD:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔬 Práctica: ${solicitud.nombre}
+👤 Docente solicitante: ${solicitud.docente}
+📧 Email: ${solicitud.docenteEmail}
+📅 Período de uso: Desde ${fechaInicioAmigable} hasta ${fechaFinAmigable}
+📅 Días solicitados:
+${diasNecesariosTexto}
+🧪 Laboratorio: ${laboratorio}
+
+📦 MATERIALES SOLICITADOS:
+${solicitud.materiales || 'No especificado'}
+
+${materialesExtra !== 'Ninguno' ? '📦 Materiales adicionales:\n' + materialesExtra + '\n\n' : ''}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Por favor, prepare los materiales y marque la solicitud como preparada en el sistema cuando esté lista.
+
+Saludos,
+Sistema de Gestión de Laboratorio`;
+
+    // Enviar email al preparador con copia al docente
+    Logger.log('Enviando notificación de nueva solicitud a preparador: ' + preparadorEmail);
+    Logger.log('Con copia a docente: ' + solicitud.docenteEmail);
+
+    const emailResult = sendNotification(
+      preparadorEmail,
+      '🆕 Nueva Solicitud: ' + solicitud.nombre,
+      emailBody,
+      { cc: solicitud.docenteEmail }
+    );
+
+    if (emailResult.success) {
+      Logger.log('Notificación enviada exitosamente');
+    } else {
+      Logger.log('Error al enviar notificación: ' + emailResult.error);
+    }
   } catch (error) {
     Logger.log('Error al notificar nueva solicitud: ' + error);
   }
@@ -1637,12 +1691,18 @@ Por favor, confirme la recepción de este correo y coordine con el preparador pa
 Saludos,
 Sistema de Gestión de Laboratorio`;
 
-        // Enviar notificación y capturar resultado (incluir foto si existe)
+        // Obtener email del preparador para enviar copia
+        const preparadorEmail = getPreparadorEmail(lab);
+
+        // Enviar notificación al docente con copia al preparador (incluir foto si existe)
         const emailResult = sendNotification(
           docenteEmail,
           '✅ Práctica Preparada: ' + nombrePractica,
           emailBody,
-          { fotoBase64: data.foto || null } // Pasar base64 directamente en lugar de URL
+          {
+            fotoBase64: data.foto || null, // Pasar base64 directamente en lugar de URL
+            cc: preparadorEmail || null // Copia al preparador
+          }
         );
 
         if (emailResult.success) {
@@ -1819,6 +1879,37 @@ function deleteUsuario(id) {
 // ==================== NOTIFICACIONES ====================
 
 /**
+ * Obtiene el email del preparador asignado a un laboratorio
+ * @param {string} laboratorio - STEM o Bio-Química
+ * @returns {string} Email del preparador o string vacío si no se encuentra
+ */
+function getPreparadorEmail(laboratorio) {
+  try {
+    const usuarios = getUsuarios();
+
+    // Buscar preparadores que tengan asignado este laboratorio
+    const preparador = usuarios.find(u => {
+      if (u.rol !== 'Preparador') return false;
+
+      // Verificar si el laboratorio está en su lista de laboratorios asignados
+      const labsAsignados = u.laboratorio ? u.laboratorio.split(',').map(l => l.trim()) : [];
+      return labsAsignados.includes(laboratorio);
+    });
+
+    if (preparador) {
+      Logger.log('Preparador encontrado para ' + laboratorio + ': ' + preparador.email);
+      return preparador.email;
+    }
+
+    Logger.log('No se encontró preparador para el laboratorio: ' + laboratorio);
+    return '';
+  } catch (error) {
+    Logger.log('Error al obtener email del preparador: ' + error);
+    return '';
+  }
+}
+
+/**
  * Formatea una fecha en español de manera amigable
  * Ejemplo: "2025-12-15" -> "Lunes, 15 de Diciembre de 2025"
  */
@@ -1938,6 +2029,12 @@ function sendNotification(email, subject, body, options) {
         </div>
       `
     };
+
+    // Agregar CC si está especificado
+    if (options.cc) {
+      emailOptions.cc = options.cc;
+      Logger.log('Email con copia a: ' + options.cc);
+    }
 
     // Agregar inlineImages solo si hay imágenes
     if (Object.keys(inlineImages).length > 0) {
