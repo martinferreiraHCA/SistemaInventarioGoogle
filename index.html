@@ -1497,6 +1497,12 @@
 
             if (message && messageEl) messageEl.textContent = message;
             if (submessage && submessageEl) submessageEl.textContent = submessage;
+
+            // Actualizar también el botón de envío con el porcentaje
+            const submitBtn = document.getElementById('solicitudSubmitBtn');
+            if (submitBtn && submitBtn.disabled) {
+                submitBtn.textContent = `Procesando... ${percent}%`;
+            }
         }
 
         // Inicialización
