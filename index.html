@@ -828,20 +828,20 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(4px);
-            display: flex;
+            display: flex !important;
             align-items: center;
             justify-content: center;
-            z-index: 10000;
+            z-index: 999999;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
         }
 
         .loading-overlay.active {
-            opacity: 1;
-            visibility: visible;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
 
         .loading-content {
@@ -1442,16 +1442,23 @@
          * Muestra el overlay de carga con un mensaje
          */
         function showLoading(message = 'Cargando...', submessage = 'Por favor espere') {
+            console.log('🔵 showLoading llamado:', message, submessage);
             const overlay = document.getElementById('loadingOverlay');
             const messageEl = document.getElementById('loadingMessage');
             const submessageEl = document.getElementById('loadingSubmessage');
             const progressBar = document.getElementById('loadingProgressBar');
+
+            if (!overlay) {
+                console.error('❌ loadingOverlay no encontrado!');
+                return;
+            }
 
             messageEl.textContent = message;
             submessageEl.textContent = submessage;
             progressBar.style.width = '0%';
 
             overlay.classList.add('active');
+            console.log('✅ Overlay activado, clases:', overlay.className);
 
             // Iniciar con un pequeño progreso para que sea visible inmediatamente
             setTimeout(() => {
@@ -1479,14 +1486,17 @@
          * Actualiza el progreso de carga
          */
         function updateLoadingProgress(percent, message = null, submessage = null) {
+            console.log(`📊 Progreso: ${percent}%`, message || '', submessage || '');
             const progressBar = document.getElementById('loadingProgressBar');
             const messageEl = document.getElementById('loadingMessage');
             const submessageEl = document.getElementById('loadingSubmessage');
 
-            progressBar.style.width = percent + '%';
+            if (progressBar) {
+                progressBar.style.width = percent + '%';
+            }
 
-            if (message) messageEl.textContent = message;
-            if (submessage) submessageEl.textContent = submessage;
+            if (message && messageEl) messageEl.textContent = message;
+            if (submessage && submessageEl) submessageEl.textContent = submessage;
         }
 
         // Inicialización
