@@ -1597,8 +1597,11 @@ function marcarSolicitudPreparada(data, laboratorio) {
         Logger.log('Intentando enviar email a: ' + docenteEmail);
 
         // Formatear fechas de manera amigable
-        const fechaInicioAmigable = formatFechaAmigable(fechaInicio);
-        const fechaFinAmigable = formatFechaAmigable(fechaFin);
+        // Convertir a string primero (pueden venir como Date objects de Sheets)
+        const fechaInicioStr = typeof fechaInicio === 'string' ? fechaInicio : formatDate(fechaInicio);
+        const fechaFinStr = typeof fechaFin === 'string' ? fechaFin : formatDate(fechaFin);
+        const fechaInicioAmigable = formatFechaAmigable(fechaInicioStr);
+        const fechaFinAmigable = formatFechaAmigable(fechaFinStr);
 
         // Formatear múltiples días seleccionados
         // Convertir fechaNecesaria a string primero (puede venir como Date object de Sheets)
