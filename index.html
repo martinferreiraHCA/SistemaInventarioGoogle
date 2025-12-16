@@ -2564,28 +2564,32 @@
             document.getElementById('solicitudModal').classList.remove('active');
         }
 
+        // Calcular tiempo estimado según peso de archivos
+        function calcularTiempoEstimado() {
+            let totalBytes = 0;
+
+            // Sumar tamaño de documentos
+            documentosSeleccionados.forEach(file => {
+                totalBytes += file.size;
+            });
+
+            // Sumar tamaño de imágenes (se comprimirán)
+            imagenesSeleccionadas.forEach(file => {
+                // Estimar que las imágenes se reducen al 20% después de compresión
+                totalBytes += file.size * 0.2;
+            });
+
+            // Calcular tiempo estimado (aproximadamente 5 segundos por MB)
+            const totalMB = totalBytes / (1024 * 1024);
+            const tiempoEstimado = Math.ceil(totalMB * 5);
+
+            return tiempoEstimado;
+        }
+
         // Agregar documentos al array
         function agregarDocumentos(input) {
             const files = Array.from(input.files);
             if (files.length === 0) return;
-
-            // Limitar cantidad TOTAL de archivos (documentos + imágenes combinados)
-            const totalArchivos = documentosSeleccionados.length + imagenesSeleccionadas.length;
-            const totalDespues = totalArchivos + files.length;
-
-            if (totalDespues > 3) {
-                showNotification('⚠️ Máximo 3 archivos en total (documentos + imágenes). Actualmente tienes ' + totalArchivos + ' archivos.', 'error');
-                input.value = '';
-                return;
-            }
-
-            // Validar tamaño máximo por archivo (2MB)
-            const archivosGrandes = files.filter(f => f.size > 2 * 1024 * 1024);
-            if (archivosGrandes.length > 0) {
-                showNotification('⚠️ Documentos máximo 2MB cada uno. Comprime o divide el archivo.', 'error');
-                input.value = '';
-                return;
-            }
 
             files.forEach(file => {
                 // Verificar que no esté duplicado
@@ -2598,9 +2602,10 @@
             actualizarPreviewDocumentos();
             input.value = ''; // Limpiar input para permitir seleccionar más
 
-            // Mostrar advertencia de tiempo
-            if (documentosSeleccionados.length + imagenesSeleccionadas.length >= 2) {
-                showNotification('ℹ️ Archivos adjuntos aumentan el tiempo de envío (~10s por archivo)', 'warning');
+            // Mostrar tiempo estimado
+            const tiempoEstimado = calcularTiempoEstimado();
+            if (tiempoEstimado > 0) {
+                showNotification(`ℹ️ Tiempo estimado de envío: ~${tiempoEstimado} segundos (depende de tu conexión y peso de archivos)`, 'warning');
             }
         }
 
@@ -2608,24 +2613,6 @@
         function agregarImagenes(input) {
             const files = Array.from(input.files);
             if (files.length === 0) return;
-
-            // Limitar cantidad TOTAL de archivos (documentos + imágenes combinados)
-            const totalArchivos = documentosSeleccionados.length + imagenesSeleccionadas.length;
-            const totalDespues = totalArchivos + files.length;
-
-            if (totalDespues > 3) {
-                showNotification('⚠️ Máximo 3 archivos en total (documentos + imágenes). Actualmente tienes ' + totalArchivos + ' archivos.', 'error');
-                input.value = '';
-                return;
-            }
-
-            // Validar tamaño máximo por imagen (5MB antes de comprimir)
-            const imagenesGrandes = files.filter(f => f.size > 5 * 1024 * 1024);
-            if (imagenesGrandes.length > 0) {
-                showNotification('⚠️ Imágenes máximo 5MB. Selecciona imágenes más pequeñas.', 'error');
-                input.value = '';
-                return;
-            }
 
             files.forEach(file => {
                 // Verificar que no esté duplicado
@@ -2638,9 +2625,10 @@
             actualizarPreviewImagenes();
             input.value = ''; // Limpiar input para permitir seleccionar más
 
-            // Mostrar advertencia de tiempo
-            if (documentosSeleccionados.length + imagenesSeleccionadas.length >= 2) {
-                showNotification('ℹ️ Archivos adjuntos aumentan el tiempo de envío (~10s por archivo)', 'warning');
+            // Mostrar tiempo estimado
+            const tiempoEstimado = calcularTiempoEstimado();
+            if (tiempoEstimado > 0) {
+                showNotification(`ℹ️ Tiempo estimado de envío: ~${tiempoEstimado} segundos (depende de tu conexión y peso de archivos)`, 'warning');
             }
         }
 
@@ -2872,18 +2860,28 @@
 
                 updateLoadingProgress(85, 'Enviando solicitud...', 'Notificando al preparador');
 
+                // Simular progreso mientras se envía al servidor
+                setTimeout(() => {
+                    updateLoadingProgress(95, 'Procesando en servidor...', 'Guardando información');
+                }, 500);
+
                 google.script.run
                     .withSuccessHandler(function(result) {
-                        hideLoading();
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Enviar Solicitud';
-                        if (result.success) {
-                            showNotification('✅ Solicitud enviada correctamente');
-                            closeSolicitudModal();
-                            loadMisSolicitudes();
-                        } else {
-                            showNotification('❌ Error al enviar solicitud: ' + (result.error || ''), 'error');
-                        }
+                        // Completar progreso al 100% antes de ocultar
+                        updateLoadingProgress(100, '¡Listo!', 'Solicitud enviada correctamente');
+
+                        setTimeout(() => {
+                            hideLoading();
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Enviar Solicitud';
+                            if (result.success) {
+                                showNotification('✅ Solicitud enviada correctamente');
+                                closeSolicitudModal();
+                                loadMisSolicitudes();
+                            } else {
+                                showNotification('❌ Error al enviar solicitud: ' + (result.error || ''), 'error');
+                            }
+                        }, 400);
                     })
                     .withFailureHandler(function(error) {
                         hideLoading();
