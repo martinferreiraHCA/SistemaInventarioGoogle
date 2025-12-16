@@ -2796,32 +2796,32 @@
 
                 updateLoadingProgress(50);
 
-                // Procesar múltiples documentos desde el array temporal
-                const documentosArray = [];
+                // Procesar múltiples documentos en paralelo (más rápido)
                 if (documentosSeleccionados.length > 0) {
-                    updateLoadingProgress(55, 'Procesando documentos...', `Subiendo ${documentosSeleccionados.length} archivo(s)`);
-                    for (let i = 0; i < documentosSeleccionados.length; i++) {
-                        console.log('Procesando documento:', documentosSeleccionados[i].name);
-                        const docBase64 = await fileToBase64(documentosSeleccionados[i]);
-                        documentosArray.push(docBase64);
-                        updateLoadingProgress(55 + (i + 1) / documentosSeleccionados.length * 10);
-                    }
-                    solicitud.documentoPractica = documentosArray.join('|||'); // Separador especial
+                    updateLoadingProgress(55, 'Procesando documentos...', `Convirtiendo ${documentosSeleccionados.length} archivo(s) en paralelo`);
+                    console.log('Procesando documentos en paralelo:', documentosSeleccionados.length);
+
+                    // Procesar todos los documentos simultáneamente
+                    const documentosPromises = documentosSeleccionados.map(file => fileToBase64(file));
+                    const documentosArray = await Promise.all(documentosPromises);
+
+                    solicitud.documentoPractica = documentosArray.join('|||');
+                    console.log('Documentos procesados:', documentosArray.length);
                 }
 
                 updateLoadingProgress(65);
 
-                // Procesar múltiples imágenes desde el array temporal
-                const imagenesArray = [];
+                // Procesar múltiples imágenes en paralelo (más rápido)
                 if (imagenesSeleccionadas.length > 0) {
-                    updateLoadingProgress(70, 'Comprimiendo imágenes...', `Procesando ${imagenesSeleccionadas.length} imagen(es)`);
-                    for (let i = 0; i < imagenesSeleccionadas.length; i++) {
-                        console.log('Comprimiendo imagen:', imagenesSeleccionadas[i].name);
-                        const imgCompressed = await compressImage(imagenesSeleccionadas[i], 800, 0.7);
-                        imagenesArray.push(imgCompressed);
-                        updateLoadingProgress(70 + (i + 1) / imagenesSeleccionadas.length * 10);
-                    }
-                    solicitud.imagenesPractica = imagenesArray.join('|||'); // Separador especial
+                    updateLoadingProgress(70, 'Comprimiendo imágenes...', `Optimizando ${imagenesSeleccionadas.length} imagen(es) en paralelo`);
+                    console.log('Comprimiendo imágenes en paralelo:', imagenesSeleccionadas.length);
+
+                    // Comprimir todas las imágenes simultáneamente con menor calidad para mayor velocidad
+                    const imagenesPromises = imagenesSeleccionadas.map(file => compressImage(file, 700, 0.6));
+                    const imagenesArray = await Promise.all(imagenesPromises);
+
+                    solicitud.imagenesPractica = imagenesArray.join('|||');
+                    console.log('Imágenes comprimidas:', imagenesArray.length);
                 }
 
                 updateLoadingProgress(85, 'Enviando solicitud...', 'Notificando al preparador');
