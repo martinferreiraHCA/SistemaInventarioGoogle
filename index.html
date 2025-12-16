@@ -1239,14 +1239,14 @@
                     <textarea id="solicitudMaterialesExtra" placeholder="Describa materiales adicionales necesarios"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Documento de la Práctica (PDF, Word, etc.)</label>
-                    <input type="file" id="solicitudDocumento" accept=".pdf,.doc,.docx,.txt">
-                    <small style="color: #999;">Opcional: Sube el documento/planificación de la práctica</small>
+                    <label>Documentos de la Práctica (PDF, Word, etc.)</label>
+                    <input type="file" id="solicitudDocumento" accept=".pdf,.doc,.docx,.txt" multiple>
+                    <small style="color: #999;">Opcional: Sube uno o varios documentos/planificación de la práctica</small>
                 </div>
                 <div class="form-group">
                     <label>Imágenes de Referencia</label>
-                    <input type="file" id="solicitudImagenes" accept="image/*">
-                    <small style="color: #999;">Opcional: Imágenes de referencia del montaje</small>
+                    <input type="file" id="solicitudImagenes" accept="image/*" multiple>
+                    <small style="color: #999;">Opcional: Sube una o varias imágenes de referencia del montaje</small>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn close-modal" onclick="closeSolicitudModal()">Cancelar</button>
@@ -2363,6 +2363,29 @@
                 .getAllSolicitudes(currentLaboratorio);
         }
 
+        // Función para formatear múltiples archivos adjuntos
+        function formatearArchivosAdjuntos(archivosStr, tipo) {
+            if (!archivosStr) return '';
+
+            const archivos = archivosStr.split('|||');
+            if (archivos.length === 1) {
+                // Un solo archivo
+                const icono = tipo === 'documento' ? '📄' : '🖼️';
+                const texto = tipo === 'documento' ? 'Ver documento' : 'Ver imagen';
+                return `<a href="${archivos[0]}" target="_blank" style="color: var(--azul-principal);">${icono} ${texto}</a>`;
+            }
+
+            // Múltiples archivos
+            let html = '<div style="margin: 5px 0;">';
+            archivos.forEach((url, index) => {
+                const icono = tipo === 'documento' ? '📄' : '🖼️';
+                const texto = tipo === 'documento' ? `Documento ${index + 1}` : `Imagen ${index + 1}`;
+                html += `<div style="margin: 3px 0;"><a href="${url}" target="_blank" style="color: var(--azul-principal);">${icono} ${texto}</a></div>`;
+            });
+            html += '</div>';
+            return html;
+        }
+
         // Función para formatear múltiples días seleccionados
         function formatearDiasNecesarios(fechasStr) {
             if (!fechasStr) return '';
@@ -2416,8 +2439,8 @@
                     <div class="request-info"><strong>Días Solicitados:</strong> ${formatearDiasNecesarios(item.fechaNecesaria)}</div>
                     <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
                     ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
-                    ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
-                    ${item.imagenesPractica ? `<div class="request-info"><strong>🖼️ Imagen:</strong> <a href="${item.imagenesPractica}" target="_blank" style="color: var(--azul-principal);">Ver imagen</a></div>` : ''}
+                    ${item.documentoPractica ? `<div class="request-info"><strong>Documentos:</strong> ${formatearArchivosAdjuntos(item.documentoPractica, 'documento')}</div>` : ''}
+                    ${item.imagenesPractica ? `<div class="request-info"><strong>Imágenes:</strong> ${formatearArchivosAdjuntos(item.imagenesPractica, 'imagen')}</div>` : ''}
                     <span class="request-status ${item.estado.toLowerCase()}">${item.estado}</span>
                     ${item.fotoPreparada ? `<div style="margin-top: 10px;"><img src="${item.fotoPreparada}" style="max-width: 100%;"></div>` : ''}
                     ${item.observacionesPreparador ? `<div class="request-info" style="margin-top: 10px;"><strong>Observaciones del preparador:</strong> ${item.observacionesPreparador}</div>` : ''}
@@ -2460,8 +2483,8 @@
                         <div class="request-info"><strong>Días Solicitados:</strong> ${formatearDiasNecesarios(item.fechaNecesaria)}</div>
                         <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
                         ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
-                        ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
-                        ${item.imagenesPractica ? `<div class="request-info"><strong>🖼️ Imagen:</strong> <a href="${item.imagenesPractica}" target="_blank" style="color: var(--azul-principal);">Ver imagen</a></div>` : ''}
+                        ${item.documentoPractica ? `<div class="request-info"><strong>Documentos:</strong> ${formatearArchivosAdjuntos(item.documentoPractica, 'documento')}</div>` : ''}
+                        ${item.imagenesPractica ? `<div class="request-info"><strong>Imágenes:</strong> ${formatearArchivosAdjuntos(item.imagenesPractica, 'imagen')}</div>` : ''}
                         <span class="request-status ${item.estado.toLowerCase()}">${item.estado}</span>
                         <br><button class="btn btn-success" style="margin-top: 10px;" onclick='openPrepararModal(${JSON.stringify(item).replace(/'/g, "&apos;")})'>Marcar como Preparada</button>
                     </div>`;
@@ -2485,8 +2508,8 @@
                         <div class="request-info"><strong>Días Solicitados:</strong> ${formatearDiasNecesarios(item.fechaNecesaria)}</div>
                         <div class="request-info"><strong>Materiales:</strong> ${item.materiales}</div>
                         ${item.materialesExtra ? `<div class="request-info"><strong>Extras:</strong> ${item.materialesExtra}</div>` : ''}
-                        ${item.documentoPractica ? `<div class="request-info"><strong>📄 Documento:</strong> <a href="${item.documentoPractica}" target="_blank" style="color: var(--azul-principal);">Ver documento</a></div>` : ''}
-                        ${item.imagenesPractica ? `<div class="request-info"><strong>🖼️ Imagen:</strong> <a href="${item.imagenesPractica}" target="_blank" style="color: var(--azul-principal);">Ver imagen</a></div>` : ''}
+                        ${item.documentoPractica ? `<div class="request-info"><strong>Documentos:</strong> ${formatearArchivosAdjuntos(item.documentoPractica, 'documento')}</div>` : ''}
+                        ${item.imagenesPractica ? `<div class="request-info"><strong>Imágenes:</strong> ${formatearArchivosAdjuntos(item.imagenesPractica, 'imagen')}</div>` : ''}
                         <span class="request-status ${item.estado.toLowerCase()}">${item.estado}</span>
                         ${item.fotoPreparada ? `<div style="margin-top: 10px;"><img src="${item.fotoPreparada}" style="max-width: 100%; border-radius: 6px;"></div>` : ''}
                         ${item.observacionesPreparador ? `<div class="request-info" style="margin-top: 10px;"><strong>Observaciones del preparador:</strong> ${item.observacionesPreparador}</div>` : ''}
@@ -2658,22 +2681,34 @@
 
                 updateLoadingProgress(50);
 
-                // Procesar documento si existe
-                const documentoFile = document.getElementById('solicitudDocumento').files[0];
-                if (documentoFile) {
-                    updateLoadingProgress(60, 'Procesando documento...', 'Subiendo archivo adjunto');
-                    console.log('Procesando documento:', documentoFile.name);
-                    solicitud.documentoPractica = await fileToBase64(documentoFile);
+                // Procesar múltiples documentos si existen
+                const documentoFiles = document.getElementById('solicitudDocumento').files;
+                const documentosArray = [];
+                if (documentoFiles.length > 0) {
+                    updateLoadingProgress(55, 'Procesando documentos...', `Subiendo ${documentoFiles.length} archivo(s)`);
+                    for (let i = 0; i < documentoFiles.length; i++) {
+                        console.log('Procesando documento:', documentoFiles[i].name);
+                        const docBase64 = await fileToBase64(documentoFiles[i]);
+                        documentosArray.push(docBase64);
+                        updateLoadingProgress(55 + (i + 1) / documentoFiles.length * 10);
+                    }
+                    solicitud.documentoPractica = documentosArray.join('|||'); // Separador especial
                 }
 
-                updateLoadingProgress(70);
+                updateLoadingProgress(65);
 
-                // Procesar imágenes si existe
-                const imagenesFile = document.getElementById('solicitudImagenes').files[0];
-                if (imagenesFile) {
-                    updateLoadingProgress(75, 'Comprimiendo imagen...', 'Optimizando calidad');
-                    console.log('Comprimiendo imagen:', imagenesFile.name);
-                    solicitud.imagenesPractica = await compressImage(imagenesFile, 800, 0.7);
+                // Procesar múltiples imágenes si existen
+                const imagenesFiles = document.getElementById('solicitudImagenes').files;
+                const imagenesArray = [];
+                if (imagenesFiles.length > 0) {
+                    updateLoadingProgress(70, 'Comprimiendo imágenes...', `Procesando ${imagenesFiles.length} imagen(es)`);
+                    for (let i = 0; i < imagenesFiles.length; i++) {
+                        console.log('Comprimiendo imagen:', imagenesFiles[i].name);
+                        const imgCompressed = await compressImage(imagenesFiles[i], 800, 0.7);
+                        imagenesArray.push(imgCompressed);
+                        updateLoadingProgress(70 + (i + 1) / imagenesFiles.length * 10);
+                    }
+                    solicitud.imagenesPractica = imagenesArray.join('|||'); // Separador especial
                 }
 
                 updateLoadingProgress(85, 'Enviando solicitud...', 'Notificando al preparador');

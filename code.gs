@@ -1481,22 +1481,34 @@ function saveSolicitud(solicitud, laboratorio) {
       sheet = ss.getSheetByName(SHEETS.SOLICITUDES);
     }
 
-    // Subir documento si existe
-    let documentoURL = '';
+    // Subir múltiples documentos si existen
+    let documentoURLs = '';
     if (solicitud.documentoPractica) {
-      const docResult = uploadDocument(solicitud.documentoPractica, solicitud.nombre + '_documento');
-      if (docResult.success) {
-        documentoURL = docResult.url;
+      const documentosArray = solicitud.documentoPractica.split('|||');
+      const urlsArray = [];
+      for (let i = 0; i < documentosArray.length; i++) {
+        const docResult = uploadDocument(documentosArray[i], solicitud.nombre + '_documento_' + (i + 1));
+        if (docResult.success) {
+          urlsArray.push(docResult.url);
+        }
       }
+      documentoURLs = urlsArray.join('|||');
+      Logger.log('Documentos subidos: ' + urlsArray.length);
     }
 
-    // Subir imágenes si existen
+    // Subir múltiples imágenes si existen
     let imagenesURLs = '';
     if (solicitud.imagenesPractica) {
-      const imgResult = uploadImage(solicitud.imagenesPractica, solicitud.nombre + '_imagen');
-      if (imgResult.success) {
-        imagenesURLs = imgResult.url;
+      const imagenesArray = solicitud.imagenesPractica.split('|||');
+      const urlsArray = [];
+      for (let i = 0; i < imagenesArray.length; i++) {
+        const imgResult = uploadImage(imagenesArray[i], solicitud.nombre + '_imagen_' + (i + 1));
+        if (imgResult.success) {
+          urlsArray.push(imgResult.url);
+        }
       }
+      imagenesURLs = urlsArray.join('|||');
+      Logger.log('Imágenes subidas: ' + urlsArray.length);
     }
 
     const id = Utilities.getUuid();
@@ -1514,8 +1526,8 @@ function saveSolicitud(solicitud, laboratorio) {
       '',
       '',
       lab,
-      documentoURL,
-      imagenesURLs
+      documentoURLs, // Ahora puede contener múltiples URLs separadas por |||
+      imagenesURLs   // Ahora puede contener múltiples URLs separadas por |||
     ]);
 
     // Notificar al preparador del laboratorio
