@@ -2569,6 +2569,22 @@
             const files = Array.from(input.files);
             if (files.length === 0) return;
 
+            // Limitar cantidad total de documentos
+            const totalDespues = documentosSeleccionados.length + files.length;
+            if (totalDespues > 5) {
+                showNotification('⚠️ Máximo 5 documentos por solicitud. Actualmente tienes ' + documentosSeleccionados.length, 'error');
+                input.value = '';
+                return;
+            }
+
+            // Validar tamaño máximo por archivo (5MB)
+            const archivosGrandes = files.filter(f => f.size > 5 * 1024 * 1024);
+            if (archivosGrandes.length > 0) {
+                showNotification('⚠️ Algunos archivos superan los 5MB. Reduce el tamaño o contacta al administrador.', 'error');
+                input.value = '';
+                return;
+            }
+
             files.forEach(file => {
                 // Verificar que no esté duplicado
                 const yaExiste = documentosSeleccionados.some(f => f.name === file.name && f.size === file.size);
@@ -2585,6 +2601,22 @@
         function agregarImagenes(input) {
             const files = Array.from(input.files);
             if (files.length === 0) return;
+
+            // Limitar cantidad total de imágenes
+            const totalDespues = imagenesSeleccionadas.length + files.length;
+            if (totalDespues > 5) {
+                showNotification('⚠️ Máximo 5 imágenes por solicitud. Actualmente tienes ' + imagenesSeleccionadas.length, 'error');
+                input.value = '';
+                return;
+            }
+
+            // Validar tamaño máximo por imagen (10MB antes de comprimir)
+            const imagenesGrandes = files.filter(f => f.size > 10 * 1024 * 1024);
+            if (imagenesGrandes.length > 0) {
+                showNotification('⚠️ Algunas imágenes superan los 10MB. Selecciona imágenes más pequeñas.', 'error');
+                input.value = '';
+                return;
+            }
 
             files.forEach(file => {
                 // Verificar que no esté duplicado
@@ -2813,11 +2845,11 @@
 
                 // Procesar múltiples imágenes en paralelo (más rápido)
                 if (imagenesSeleccionadas.length > 0) {
-                    updateLoadingProgress(70, 'Comprimiendo imágenes...', `Optimizando ${imagenesSeleccionadas.length} imagen(es) en paralelo`);
+                    updateLoadingProgress(70, 'Comprimiendo imágenes...', `Optimizando ${imagenesSeleccionadas.length} imagen(es) - alta compresión`);
                     console.log('Comprimiendo imágenes en paralelo:', imagenesSeleccionadas.length);
 
-                    // Comprimir todas las imágenes simultáneamente con menor calidad para mayor velocidad
-                    const imagenesPromises = imagenesSeleccionadas.map(file => compressImage(file, 700, 0.6));
+                    // Comprimir agresivamente para máxima velocidad (500px, calidad 0.4)
+                    const imagenesPromises = imagenesSeleccionadas.map(file => compressImage(file, 500, 0.4));
                     const imagenesArray = await Promise.all(imagenesPromises);
 
                     solicitud.imagenesPractica = imagenesArray.join('|||');
