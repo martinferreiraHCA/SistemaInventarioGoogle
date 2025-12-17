@@ -908,6 +908,8 @@
             100% { opacity: 0.6; }
         }
     </style>
+    <!-- Librería para convertir HEIC a JPEG automáticamente -->
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 </head>
 <body>
     <!-- Notificación -->
@@ -1253,7 +1255,7 @@
                     <label>Imágenes de Referencia - Opcional</label>
                     <input type="file" id="solicitudImagenes" accept="image/*,.heic,.heif" multiple onchange="agregarImagenes(this)" style="display: block; margin-bottom: 10px;">
                     <small style="color: #2196f3; display: block; margin-bottom: 10px; font-weight: 500;">ℹ️ Puedes seleccionar múltiples imágenes. Se comprimirán automáticamente.</small>
-                    <small style="color: #ff9800; display: block; margin-bottom: 10px; font-size: 12px;">⚠️ Nota: Si usas HEIC (fotos de iPhone) y da error, convierte las imágenes a JPG primero.</small>
+                    <small style="color: #10b981; display: block; margin-bottom: 10px; font-size: 12px;">✅ Fotos de iPhone (HEIC) se convierten automáticamente a JPG.</small>
                     <div id="imagenesPreview" style="display: none; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 8px;">
                         <strong style="font-size: 12px; color: #666;">Imágenes agregadas:</strong>
                         <div id="imagenesList" style="margin-top: 8px;"></div>
@@ -1982,61 +1984,92 @@
             }
         }
 
-        // Función para comprimir imagen antes de subirla
-        function compressImage(file, maxWidth = 800, quality = 0.7) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
+        // Función para comprimir imagen antes de subirla (con soporte automático para HEIC)
+        async function compressImage(file, maxWidth = 800, quality = 0.7) {
+            try {
+                // Detectar si es HEIC/HEIF y convertir automáticamente a JPEG
+                const isHEIC = file.type === 'image/heic' || file.type === 'image/heif' ||
+                               file.name.toLowerCase().endsWith('.heic') ||
+                               file.name.toLowerCase().endsWith('.heif');
 
-                    // Timeout para detectar imágenes que no cargan (ej: HEIC en algunos navegadores)
-                    const timeoutId = setTimeout(() => {
-                        reject(new Error(`No se pudo procesar la imagen "${file.name}". Si es formato HEIC, intenta convertirla a JPG primero.`));
-                    }, 10000); // 10 segundos timeout
+                if (isHEIC) {
+                    console.log(`🔄 Convirtiendo HEIC a JPEG: ${file.name}`);
+                    try {
+                        // Convertir HEIC a JPEG usando heic2any
+                        const convertedBlob = await heic2any({
+                            blob: file,
+                            toType: 'image/jpeg',
+                            quality: 0.9
+                        });
 
-                    img.onload = function() {
-                        clearTimeout(timeoutId);
-                        try {
-                            const canvas = document.createElement('canvas');
-                            let width = img.width;
-                            let height = img.height;
+                        // Crear un nuevo archivo desde el blob convertido
+                        file = new File([convertedBlob], file.name.replace(/\.heic$/i, '.jpg'), {
+                            type: 'image/jpeg'
+                        });
+                        console.log(`✅ HEIC convertido a JPEG: ${file.name}`);
+                    } catch (heicError) {
+                        console.error('Error al convertir HEIC:', heicError);
+                        throw new Error(`No se pudo convertir la imagen HEIC "${file.name}". Intenta convertirla manualmente.`);
+                    }
+                }
 
-                            // Redimensionar si es muy grande
-                            if (width > maxWidth) {
-                                height = (height * maxWidth) / width;
-                                width = maxWidth;
-                            }
+                // Procesar la imagen (ya sea original o convertida)
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
 
-                            canvas.width = width;
-                            canvas.height = height;
+                        // Timeout de 15 segundos
+                        const timeoutId = setTimeout(() => {
+                            reject(new Error(`Timeout al procesar "${file.name}"`));
+                        }, 15000);
 
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0, width, height);
-
-                            // Convertir a base64 con compresión
-                            const compressed = canvas.toDataURL('image/jpeg', quality);
-                            console.log('Imagen comprimida:', (file.size / 1024).toFixed(2) + 'KB → ' + (compressed.length * 0.75 / 1024).toFixed(2) + 'KB');
-                            resolve(compressed);
-                        } catch (error) {
+                        img.onload = function() {
                             clearTimeout(timeoutId);
-                            reject(new Error(`Error al comprimir "${file.name}": ${error.message}`));
-                        }
+                            try {
+                                const canvas = document.createElement('canvas');
+                                let width = img.width;
+                                let height = img.height;
+
+                                // Redimensionar si es muy grande
+                                if (width > maxWidth) {
+                                    height = (height * maxWidth) / width;
+                                    width = maxWidth;
+                                }
+
+                                canvas.width = width;
+                                canvas.height = height;
+
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0, width, height);
+
+                                // Convertir a base64 con compresión
+                                const compressed = canvas.toDataURL('image/jpeg', quality);
+                                console.log('Imagen comprimida:', (file.size / 1024).toFixed(2) + 'KB → ' + (compressed.length * 0.75 / 1024).toFixed(2) + 'KB');
+                                resolve(compressed);
+                            } catch (error) {
+                                clearTimeout(timeoutId);
+                                reject(new Error(`Error al comprimir "${file.name}": ${error.message}`));
+                            }
+                        };
+
+                        img.onerror = function(error) {
+                            clearTimeout(timeoutId);
+                            reject(new Error(`No se pudo cargar "${file.name}". Formato no soportado.`));
+                        };
+
+                        img.src = e.target.result;
                     };
 
-                    img.onerror = function(error) {
-                        clearTimeout(timeoutId);
-                        reject(new Error(`No se pudo cargar la imagen "${file.name}". Formato no soportado o archivo corrupto.`));
+                    reader.onerror = function(error) {
+                        reject(new Error(`Error al leer "${file.name}": ${error.message || 'Error desconocido'}`));
                     };
 
-                    img.src = e.target.result;
-                };
-
-                reader.onerror = function(error) {
-                    reject(new Error(`Error al leer el archivo "${file.name}": ${error.message || 'Error desconocido'}`));
-                };
-
-                reader.readAsDataURL(file);
-            });
+                    reader.readAsDataURL(file);
+                });
+            } catch (error) {
+                throw error;
+            }
         }
 
         // Función para convertir archivos (documentos) a base64
@@ -2659,16 +2692,31 @@
             const files = Array.from(input.files);
             if (files.length === 0) return;
 
+            let heicCount = 0;
+
             files.forEach(file => {
                 // Verificar que no esté duplicado
                 const yaExiste = imagenesSeleccionadas.some(f => f.name === file.name && f.size === file.size);
                 if (!yaExiste) {
                     imagenesSeleccionadas.push(file);
+
+                    // Detectar archivos HEIC
+                    const isHEIC = file.type === 'image/heic' || file.type === 'image/heif' ||
+                                   file.name.toLowerCase().endsWith('.heic') ||
+                                   file.name.toLowerCase().endsWith('.heif');
+                    if (isHEIC) {
+                        heicCount++;
+                    }
                 }
             });
 
             actualizarPreviewImagenes();
             input.value = ''; // Limpiar input para permitir seleccionar más
+
+            // Notificar si hay archivos HEIC que se convertirán
+            if (heicCount > 0) {
+                showNotification(`✅ ${heicCount} imagen(es) HEIC detectada(s). Se convertirán automáticamente a JPG durante el envío.`, 'success');
+            }
 
             // Mostrar tiempo estimado
             const tiempoEstimado = calcularTiempoEstimado();
