@@ -909,7 +909,7 @@
         }
     </style>
     <!-- Librería para convertir HEIC a JPEG automáticamente -->
-    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js" defer></script>
 </head>
 <body>
     <!-- Notificación -->
@@ -1254,8 +1254,8 @@
                 <div class="form-group">
                     <label>Imágenes de Referencia - Opcional</label>
                     <input type="file" id="solicitudImagenes" accept="image/*,.heic,.heif" multiple onchange="agregarImagenes(this)" style="display: block; margin-bottom: 10px;">
-                    <small style="color: #2196f3; display: block; margin-bottom: 10px; font-weight: 500;">ℹ️ Puedes seleccionar múltiples imágenes. Se comprimirán automáticamente.</small>
-                    <small style="color: #10b981; display: block; margin-bottom: 10px; font-size: 12px;">✅ Fotos de iPhone (HEIC) se convierten automáticamente a JPG.</small>
+                    <small style="color: #2196f3; display: block; margin-bottom: 10px; font-weight: 500;">ℹ️ Puedes seleccionar múltiples imágenes (JPG, PNG, HEIC). Se comprimirán automáticamente.</small>
+                    <small style="color: #ff9800; display: block; margin-bottom: 10px; font-size: 12px;">💡 Recomendado: JPG/PNG. HEIC funciona en algunos navegadores, si da error convierte a JPG primero.</small>
                     <div id="imagenesPreview" style="display: none; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 8px;">
                         <strong style="font-size: 12px; color: #666;">Imágenes agregadas:</strong>
                         <div id="imagenesList" style="margin-top: 8px;"></div>
@@ -1993,23 +1993,45 @@
                                file.name.toLowerCase().endsWith('.heif');
 
                 if (isHEIC) {
-                    console.log(`🔄 Convirtiendo HEIC a JPEG: ${file.name}`);
-                    try {
-                        // Convertir HEIC a JPEG usando heic2any
-                        const convertedBlob = await heic2any({
-                            blob: file,
-                            toType: 'image/jpeg',
-                            quality: 0.9
-                        });
+                    console.log(`🔄 Intentando convertir HEIC a JPEG: ${file.name}`);
 
-                        // Crear un nuevo archivo desde el blob convertido
-                        file = new File([convertedBlob], file.name.replace(/\.heic$/i, '.jpg'), {
-                            type: 'image/jpeg'
-                        });
-                        console.log(`✅ HEIC convertido a JPEG: ${file.name}`);
-                    } catch (heicError) {
-                        console.error('Error al convertir HEIC:', heicError);
-                        throw new Error(`No se pudo convertir la imagen HEIC "${file.name}". Intenta convertirla manualmente.`);
+                    // Verificar que heic2any esté disponible
+                    if (typeof heic2any === 'undefined') {
+                        console.warn('⚠️ heic2any no está cargado, intentando procesar directamente');
+                    } else {
+                        try {
+                            // Convertir HEIC a JPEG usando heic2any
+                            let convertedBlob = await heic2any({
+                                blob: file,
+                                toType: 'image/jpeg',
+                                quality: 0.9
+                            });
+
+                            // heic2any puede devolver un array de blobs o un solo blob
+                            // Si es un array, tomamos el primero
+                            if (Array.isArray(convertedBlob)) {
+                                console.log(`ℹ️ heic2any devolvió ${convertedBlob.length} blob(s), usando el primero`);
+                                convertedBlob = convertedBlob[0];
+                            }
+
+                            // Validar que tengamos un blob
+                            if (!convertedBlob || !(convertedBlob instanceof Blob)) {
+                                throw new Error('Resultado de conversión inválido');
+                            }
+
+                            // Crear un nuevo archivo desde el blob convertido
+                            file = new File([convertedBlob], file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg'), {
+                                type: 'image/jpeg'
+                            });
+                            console.log(`✅ HEIC convertido a JPEG: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+                        } catch (heicError) {
+                            console.error('❌ Error al convertir con heic2any:', heicError);
+                            console.error('Tipo de error:', heicError.name);
+                            console.error('Mensaje:', heicError.message);
+                            console.log('⚠️ Intentando procesar HEIC directamente (puede funcionar en Safari/Chrome recientes)...');
+                            // No lanzamos error aquí, intentamos procesar directamente
+                            // Si el navegador soporta HEIC nativamente, funcionará
+                        }
                     }
                 }
 
@@ -2055,7 +2077,12 @@
 
                         img.onerror = function(error) {
                             clearTimeout(timeoutId);
-                            reject(new Error(`No se pudo cargar "${file.name}". Formato no soportado.`));
+                            const fileName = file.name.toLowerCase();
+                            if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
+                                reject(new Error(`HEIC "${file.name}" no se pudo procesar. Por favor, convierte la foto a JPG en tu dispositivo primero. En iPhone: Ajustes > Cámara > Formatos > Más compatible.`));
+                            } else {
+                                reject(new Error(`No se pudo cargar "${file.name}". Formato no soportado o archivo corrupto.`));
+                            }
                         };
 
                         img.src = e.target.result;
@@ -2715,7 +2742,7 @@
 
             // Notificar si hay archivos HEIC que se convertirán
             if (heicCount > 0) {
-                showNotification(`✅ ${heicCount} imagen(es) HEIC detectada(s). Se convertirán automáticamente a JPG durante el envío.`, 'success');
+                showNotification(`⚠️ ${heicCount} imagen(es) HEIC detectada(s). Se intentará convertir a JPG. Si falla, convierte manualmente.`, 'warning');
             }
 
             // Mostrar tiempo estimado
