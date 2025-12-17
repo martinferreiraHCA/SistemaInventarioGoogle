@@ -909,7 +909,7 @@
         }
     </style>
     <!-- Librería para convertir HEIC a JPEG automáticamente -->
-    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 </head>
 <body>
     <!-- Notificación -->
@@ -1254,8 +1254,8 @@
                 <div class="form-group">
                     <label>Imágenes de Referencia - Opcional</label>
                     <input type="file" id="solicitudImagenes" accept="image/*,.heic,.heif" multiple onchange="agregarImagenes(this)" style="display: block; margin-bottom: 10px;">
-                    <small style="color: #2196f3; display: block; margin-bottom: 10px; font-weight: 500;">ℹ️ Puedes seleccionar múltiples imágenes (JPG, PNG, HEIC). Se comprimirán automáticamente.</small>
-                    <small style="color: #ff9800; display: block; margin-bottom: 10px; font-size: 12px;">💡 Recomendado: JPG/PNG. HEIC funciona en algunos navegadores, si da error convierte a JPG primero.</small>
+                    <small style="color: #2196f3; display: block; margin-bottom: 10px; font-weight: 500;">ℹ️ Acepta JPG, PNG y HEIC (fotos de iPhone). Se comprimirán automáticamente.</small>
+                    <small style="color: #10b981; display: block; margin-bottom: 10px; font-size: 12px;">✅ Fotos HEIC se convierten automáticamente a JPG (puede tardar unos segundos).</small>
                     <div id="imagenesPreview" style="display: none; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 8px;">
                         <strong style="font-size: 12px; color: #666;">Imágenes agregadas:</strong>
                         <div id="imagenesList" style="margin-top: 8px;"></div>
@@ -1984,7 +1984,19 @@
             }
         }
 
-        // Función para comprimir imagen antes de subirla (con soporte automático para HEIC)
+        // Función auxiliar para esperar a que heic2any cargue
+        async function waitForHeic2any(timeout = 5000) {
+            const start = Date.now();
+            while (typeof heic2any === 'undefined') {
+                if (Date.now() - start > timeout) {
+                    throw new Error('heic2any no se cargó a tiempo');
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return true;
+        }
+
+        // Función para comprimir imagen antes de subirla (con soporte ROBUSTO para HEIC)
         async function compressImage(file, maxWidth = 800, quality = 0.7) {
             try {
                 // Detectar si es HEIC/HEIF y convertir automáticamente a JPEG
@@ -1993,44 +2005,70 @@
                                file.name.toLowerCase().endsWith('.heif');
 
                 if (isHEIC) {
-                    console.log(`🔄 Intentando convertir HEIC a JPEG: ${file.name}`);
+                    console.log(`🔄 CONVERSIÓN HEIC INICIADA: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
 
-                    // Verificar que heic2any esté disponible
-                    if (typeof heic2any === 'undefined') {
-                        console.warn('⚠️ heic2any no está cargado, intentando procesar directamente');
-                    } else {
-                        try {
-                            // Convertir HEIC a JPEG usando heic2any
-                            let convertedBlob = await heic2any({
-                                blob: file,
-                                toType: 'image/jpeg',
-                                quality: 0.9
-                            });
+                    // Estrategia 1: Esperar a que heic2any cargue si no está listo
+                    try {
+                        await waitForHeic2any(5000);
+                        console.log('✅ heic2any está disponible');
+                    } catch (e) {
+                        console.warn('⚠️ heic2any no disponible, saltando conversión');
+                    }
 
-                            // heic2any puede devolver un array de blobs o un solo blob
-                            // Si es un array, tomamos el primero
-                            if (Array.isArray(convertedBlob)) {
-                                console.log(`ℹ️ heic2any devolvió ${convertedBlob.length} blob(s), usando el primero`);
-                                convertedBlob = convertedBlob[0];
+                    if (typeof heic2any !== 'undefined') {
+                        // Estrategia 2: Intentar conversión con múltiples configuraciones
+                        const strategies = [
+                            { quality: 0.9, multiple: false, name: 'Alta calidad' },
+                            { quality: 0.7, multiple: false, name: 'Calidad media' },
+                            { quality: 0.5, multiple: false, name: 'Calidad baja' }
+                        ];
+
+                        for (const strategy of strategies) {
+                            try {
+                                console.log(`🔧 Intentando estrategia: ${strategy.name}`);
+
+                                let convertedBlob = await heic2any({
+                                    blob: file,
+                                    toType: 'image/jpeg',
+                                    quality: strategy.quality,
+                                    multiple: strategy.multiple
+                                });
+
+                                // Manejar respuesta (puede ser array o blob único)
+                                if (Array.isArray(convertedBlob)) {
+                                    console.log(`📦 heic2any devolvió ${convertedBlob.length} blob(s)`);
+                                    convertedBlob = convertedBlob[0];
+                                }
+
+                                // Validar resultado
+                                if (!convertedBlob || !(convertedBlob instanceof Blob)) {
+                                    throw new Error('Blob inválido');
+                                }
+
+                                if (convertedBlob.size === 0) {
+                                    throw new Error('Blob vacío');
+                                }
+
+                                // ¡ÉXITO! Crear archivo JPG
+                                const newFileName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
+                                file = new File([convertedBlob], newFileName, {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+
+                                console.log(`✅✅✅ HEIC CONVERTIDO EXITOSAMENTE: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+                                break; // Salir del loop, conversión exitosa
+
+                            } catch (strategyError) {
+                                console.warn(`⚠️ Estrategia "${strategy.name}" falló:`, strategyError.message);
+                                // Continuar con siguiente estrategia
                             }
+                        }
 
-                            // Validar que tengamos un blob
-                            if (!convertedBlob || !(convertedBlob instanceof Blob)) {
-                                throw new Error('Resultado de conversión inválido');
-                            }
-
-                            // Crear un nuevo archivo desde el blob convertido
-                            file = new File([convertedBlob], file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg'), {
-                                type: 'image/jpeg'
-                            });
-                            console.log(`✅ HEIC convertido a JPEG: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
-                        } catch (heicError) {
-                            console.error('❌ Error al convertir con heic2any:', heicError);
-                            console.error('Tipo de error:', heicError.name);
-                            console.error('Mensaje:', heicError.message);
-                            console.log('⚠️ Intentando procesar HEIC directamente (puede funcionar en Safari/Chrome recientes)...');
-                            // No lanzamos error aquí, intentamos procesar directamente
-                            // Si el navegador soporta HEIC nativamente, funcionará
+                        // Verificar si la conversión funcionó
+                        if (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
+                            console.error('❌ TODAS las estrategias de conversión fallaron');
+                            throw new Error(`No se pudo convertir ${file.name}. Prueba: 1) Abre la foto en tu iPhone y compártela como JPG, 2) Usa una app de conversión, 3) Cambia ajustes de cámara a "Más compatible"`);
                         }
                     }
                 }
@@ -2742,7 +2780,7 @@
 
             // Notificar si hay archivos HEIC que se convertirán
             if (heicCount > 0) {
-                showNotification(`⚠️ ${heicCount} imagen(es) HEIC detectada(s). Se intentará convertir a JPG. Si falla, convierte manualmente.`, 'warning');
+                showNotification(`✅ ${heicCount} imagen(es) HEIC detectada(s). Se convertirán automáticamente a JPG durante el envío.`, 'success');
             }
 
             // Mostrar tiempo estimado
@@ -2967,15 +3005,28 @@
 
                 // Procesar múltiples imágenes en paralelo (más rápido)
                 if (imagenesSeleccionadas.length > 0) {
-                    updateLoadingProgress(70, 'Comprimiendo imágenes...', `Compresión máxima: ${imagenesSeleccionadas.length} imagen(es)`);
-                    console.log('Comprimiendo imágenes en paralelo:', imagenesSeleccionadas.length);
+                    // Detectar si hay HEIC
+                    const heicImages = imagenesSeleccionadas.filter(f =>
+                        f.name.toLowerCase().endsWith('.heic') ||
+                        f.name.toLowerCase().endsWith('.heif') ||
+                        f.type === 'image/heic' ||
+                        f.type === 'image/heif'
+                    );
+
+                    if (heicImages.length > 0) {
+                        updateLoadingProgress(70, 'Convirtiendo imágenes HEIC...', `${heicImages.length} HEIC + ${imagenesSeleccionadas.length - heicImages.length} otras. Puede tardar...`);
+                    } else {
+                        updateLoadingProgress(70, 'Comprimiendo imágenes...', `Procesando ${imagenesSeleccionadas.length} imagen(es)`);
+                    }
+
+                    console.log('Procesando imágenes:', imagenesSeleccionadas.length, '(' + heicImages.length + ' HEIC)');
 
                     // Comprimir MÁXIMO para velocidad (400px, calidad 0.3) - archivos ~40KB
                     const imagenesPromises = imagenesSeleccionadas.map(file => compressImage(file, 400, 0.3));
                     const imagenesArray = await Promise.all(imagenesPromises);
 
                     solicitud.imagenesPractica = imagenesArray.join('|||');
-                    console.log('Imágenes comprimidas:', imagenesArray.length);
+                    console.log('✅ Todas las imágenes procesadas exitosamente:', imagenesArray.length);
                 }
 
                 updateLoadingProgress(85, 'Enviando solicitud...', 'Notificando al preparador');
