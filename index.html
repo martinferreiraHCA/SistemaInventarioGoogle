@@ -908,8 +908,19 @@
             100% { opacity: 0.6; }
         }
     </style>
-    <!-- Librería para convertir HEIC a JPEG automáticamente -->
+    <!-- Librerías para convertir HEIC a JPEG automáticamente (múltiples estrategias) -->
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+    <!-- Polyfill adicional para mejor compatibilidad -->
+    <script>
+        // Detección de soporte HEIC nativo del navegador
+        window.heicNativeSupport = false;
+        (function() {
+            const img = new Image();
+            img.onload = () => { window.heicNativeSupport = true; };
+            img.onerror = () => { window.heicNativeSupport = false; };
+            img.src = 'data:image/heic;base64,AAAAHGZ0eXBoZWljAAAAAG1pZjFoZWljbWlhZjFtaWIxAAAC';
+        })();
+    </script>
 </head>
 <body>
     <!-- Notificación -->
@@ -2065,10 +2076,87 @@
                             }
                         }
 
-                        // Verificar si la conversión funcionó
+                        // Verificar si la conversión con heic2any funcionó
                         if (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
-                            console.error('❌ TODAS las estrategias de conversión fallaron');
-                            throw new Error(`No se pudo convertir ${file.name}. Prueba: 1) Abre la foto en tu iPhone y compártela como JPG, 2) Usa una app de conversión, 3) Cambia ajustes de cámara a "Más compatible"`);
+                            console.warn('⚠️ heic2any falló con todas las estrategias, intentando método alternativo...');
+                        } else {
+                            console.log('✅ Conversión con heic2any exitosa, procesando imagen...');
+                        }
+                    }
+
+                    // ESTRATEGIA ALTERNATIVA: Intentar procesar HEIC directamente si el navegador lo soporta
+                    if ((file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif'))) {
+                        console.log('🔄 ESTRATEGIA ALTERNATIVA: Procesamiento nativo del navegador');
+
+                        try {
+                            // Intentar cargar el HEIC directamente en Canvas (Safari/Chrome modernos)
+                            const nativeResult = await new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = function(e) {
+                                    const img = new Image();
+
+                                    const timeout = setTimeout(() => {
+                                        reject(new Error('Timeout procesamiento nativo'));
+                                    }, 10000);
+
+                                    img.onload = function() {
+                                        clearTimeout(timeout);
+                                        console.log('✅ ¡El navegador PUEDE procesar HEIC nativamente!');
+
+                                        // Convertir a JPEG usando Canvas
+                                        const canvas = document.createElement('canvas');
+                                        let width = img.width;
+                                        let height = img.height;
+
+                                        // Redimensionar si es muy grande
+                                        const maxDim = 2000;
+                                        if (width > maxDim || height > maxDim) {
+                                            if (width > height) {
+                                                height = (height * maxDim) / width;
+                                                width = maxDim;
+                                            } else {
+                                                width = (width * maxDim) / height;
+                                                height = maxDim;
+                                            }
+                                        }
+
+                                        canvas.width = width;
+                                        canvas.height = height;
+                                        const ctx = canvas.getContext('2d');
+                                        ctx.drawImage(img, 0, 0, width, height);
+
+                                        // Convertir a blob JPEG
+                                        canvas.toBlob((blob) => {
+                                            if (blob) {
+                                                const newFileName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
+                                                const newFile = new File([blob], newFileName, {
+                                                    type: 'image/jpeg',
+                                                    lastModified: Date.now()
+                                                });
+                                                resolve(newFile);
+                                            } else {
+                                                reject(new Error('Canvas.toBlob falló'));
+                                            }
+                                        }, 'image/jpeg', 0.85);
+                                    };
+
+                                    img.onerror = function() {
+                                        clearTimeout(timeout);
+                                        reject(new Error('Navegador no puede cargar HEIC'));
+                                    };
+
+                                    img.src = e.target.result;
+                                };
+                                reader.onerror = () => reject(new Error('FileReader falló'));
+                                reader.readAsDataURL(file);
+                            });
+
+                            file = nativeResult;
+                            console.log(`✅✅✅ HEIC CONVERTIDO CON MÉTODO NATIVO: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+
+                        } catch (nativeError) {
+                            console.error('❌ Procesamiento nativo también falló:', nativeError.message);
+                            // Aún no lanzamos error, lo intentaremos procesar tal cual
                         }
                     }
                 }
