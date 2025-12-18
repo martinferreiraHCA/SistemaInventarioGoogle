@@ -2096,6 +2096,8 @@
 
         // Cambiar vista
         function changeView(viewId, element) {
+            console.log('🔄 changeView llamado con viewId:', viewId);
+
             // Actualizar menú activo
             document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
             if (element) element.classList.add('active');
@@ -2105,31 +2107,39 @@
             document.getElementById(viewId).classList.add('active');
 
             // Cargar datos específicos según la vista
+            console.log('📊 Cargando datos para vista:', viewId);
             switch(viewId) {
                 case 'inventarioView':
+                    console.log('→ Cargando inventario');
                     if (inventario.length === 0) {
                         loadInventario();
                     }
                     break;
                 case 'altasBajasView':
+                    console.log('→ Cargando altas y bajas');
                     loadAltasBajas();
                     break;
                 case 'bitacoraView':
+                    console.log('→ Cargando bitácora');
                     if (typeof loadBitacora === 'function') {
                         loadBitacora();
                     }
                     break;
                 case 'categoriasView':
+                    console.log('→ Cargando categorías');
                     if (typeof loadCategorias === 'function') {
                         loadCategorias();
                     }
                     break;
                 case 'gestionSolicitudesView':
                 case 'solicitudesDocenteView':
+                    console.log('→ Cargando solicitudes');
                     if (typeof loadSolicitudes === 'function') {
                         loadSolicitudes();
                     }
                     break;
+                default:
+                    console.log('→ Vista sin carga específica:', viewId);
             }
 
             // Cerrar sidebar en móvil
@@ -4382,14 +4392,18 @@
         });
 
         function loadAltasBajas() {
+            console.log('📥 loadAltasBajas() iniciado para laboratorio:', currentLaboratorio);
             showLoading();
             google.script.run
                 .withSuccessHandler(function(data) {
+                    console.log('✅ Datos de altas/bajas recibidos:', data);
+                    console.log('   Cantidad de registros:', data ? data.length : 0);
                     hideLoading();
                     altasBajas = data;
                     displayAltasBajas(data);
                 })
                 .withFailureHandler(function(error) {
+                    console.error('❌ Error al cargar altas/bajas:', error);
                     hideLoading();
                     showNotification('Error al cargar altas/bajas: ' + error.message, 'error');
                 })
@@ -4397,11 +4411,21 @@
         }
 
         function displayAltasBajas(registros) {
+            console.log('🖼️ displayAltasBajas() iniciado con', registros ? registros.length : 0, 'registros');
             const container = document.getElementById('altasBajasTable');
+
+            if (!container) {
+                console.error('❌ No se encontró el contenedor altasBajasTable');
+                return;
+            }
+
             if (!registros || registros.length === 0) {
+                console.log('⚠️ No hay registros para mostrar');
                 container.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">No hay registros de altas/bajas</p>';
                 return;
             }
+
+            console.log('✅ Mostrando', registros.length, 'registros en la tabla');
 
             let html = `<table>
                 <thead>
@@ -4434,6 +4458,7 @@
 
             html += '</tbody></table>';
             container.innerHTML = html;
+            console.log('✅ Tabla de altas/bajas renderizada correctamente');
         }
 
         function openRegistrarAltaBajaModal() {
