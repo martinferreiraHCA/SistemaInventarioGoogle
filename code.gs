@@ -463,9 +463,10 @@ function getInventario(laboratorio) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0]) { // Si tiene ID
         const estado = data[i][3];
+        const cantidad = parseInt(data[i][2]) || 0;
 
-        // FILTRAR: Solo mostrar elementos que NO estén dados de baja
-        if (estado !== 'Dado de baja') {
+        // FILTRAR: Solo mostrar elementos que NO estén dados de baja Y que tengan cantidad > 0
+        if (estado !== 'Dado de baja' && cantidad > 0) {
           // Parsear distribución de estados si existe (columna 10)
           let distribucionEstados = {};
           if (data[i][9] && data[i][9] !== '') {
@@ -480,7 +481,7 @@ function getInventario(laboratorio) {
           elementos.push({
             id: data[i][0],
             nombre: data[i][1],
-            cantidad: data[i][2],
+            cantidad: cantidad,
             estado: estado,
             categoria: data[i][4],
             descripcion: data[i][5] || '',
@@ -2182,11 +2183,13 @@ function sendNotification(email, subject, body, options) {
  */
 function registrarAltaBaja(tipo, elementoId, elementoNombre, cantidad, motivo, usuario, laboratorio) {
   try {
-    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
     if (!ss) {
       return { success: false, error: 'Laboratorio inválido' };
     }
 
+    // 1. Registrar en historial de AltasBajas
     let sheet = ss.getSheetByName(SHEETS.ALTAS_BAJAS);
     if (!sheet) {
       initializeSheets();
@@ -2206,6 +2209,49 @@ function registrarAltaBaja(tipo, elementoId, elementoNombre, cantidad, motivo, u
       motivo || '',
       usuario
     ]);
+
+    // 2. Actualizar cantidad en inventario
+    const inventarioSheet = ss.getSheetByName(SHEETS.INVENTARIO);
+    if (inventarioSheet) {
+      const data = inventarioSheet.getDataRange().getValues();
+
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === elementoId) {
+          const cantidadActual = parseInt(data[i][2]) || 0;
+          let nuevaCantidad;
+
+          if (tipo === 'Alta') {
+            // Sumar la cantidad
+            nuevaCantidad = cantidadActual + parseInt(cantidad);
+          } else if (tipo === 'Baja') {
+            // Restar la cantidad
+            nuevaCantidad = cantidadActual - parseInt(cantidad);
+            // No permitir cantidades negativas
+            if (nuevaCantidad < 0) {
+              nuevaCantidad = 0;
+            }
+          }
+
+          // Actualizar la cantidad en la columna 3 (índice 2)
+          inventarioSheet.getRange(i + 1, 3).setValue(nuevaCantidad);
+
+          // Si la cantidad llega a 0, marcar como "Dado de baja"
+          if (nuevaCantidad === 0 && tipo === 'Baja') {
+            inventarioSheet.getRange(i + 1, 4).setValue('Dado de baja');
+          }
+
+          // Si es un alta y estaba dado de baja, cambiar a Funcionamiento
+          if (tipo === 'Alta' && data[i][3] === 'Dado de baja') {
+            inventarioSheet.getRange(i + 1, 4).setValue('Funcionamiento');
+          }
+
+          break;
+        }
+      }
+
+      // Invalidar caché
+      clearInventarioCache(lab);
+    }
 
     return { success: true };
   } catch (error) {
