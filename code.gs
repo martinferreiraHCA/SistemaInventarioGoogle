@@ -2265,17 +2265,23 @@ function registrarAltaBaja(tipo, elementoId, elementoNombre, cantidad, motivo, u
  */
 function getAltasBajas(laboratorio) {
   try {
+    Logger.log('📥 getAltasBajas() llamado para laboratorio: ' + (laboratorio || LABORATORIOS.STEM));
+
     const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
     if (!ss) {
+      Logger.log('❌ No se encontró spreadsheet para laboratorio');
       return [];
     }
 
     let sheet = ss.getSheetByName(SHEETS.ALTAS_BAJAS);
     if (!sheet) {
+      Logger.log('⚠️ No existe la hoja ALTAS_BAJAS');
       return [];
     }
 
     const data = sheet.getDataRange().getValues();
+    Logger.log('📊 Filas en hoja ALTAS_BAJAS: ' + data.length);
+
     const registros = [];
 
     for (let i = 1; i < data.length; i++) {
@@ -2293,6 +2299,8 @@ function getAltasBajas(laboratorio) {
       }
     }
 
+    Logger.log('✅ Registros procesados: ' + registros.length);
+
     // Ordenar por fecha descendente (más recientes primero)
     registros.sort((a, b) => {
       const fechaA = new Date(a.fecha);
@@ -2300,9 +2308,10 @@ function getAltasBajas(laboratorio) {
       return fechaB - fechaA;
     });
 
+    Logger.log('✅ Devolviendo ' + registros.length + ' registros ordenados');
     return registros;
   } catch (error) {
-    Logger.log('Error al obtener altas/bajas: ' + error);
+    Logger.log('❌ Error al obtener altas/bajas: ' + error);
     return [];
   }
 }
