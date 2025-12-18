@@ -466,6 +466,17 @@ function getInventario(laboratorio) {
 
         // FILTRAR: Solo mostrar elementos que NO estén dados de baja
         if (estado !== 'Dado de baja') {
+          // Parsear distribución de estados si existe (columna 10)
+          let distribucionEstados = {};
+          if (data[i][9] && data[i][9] !== '') {
+            try {
+              distribucionEstados = JSON.parse(data[i][9]);
+            } catch (e) {
+              Logger.log('Error al parsear distribución de estados: ' + e);
+              distribucionEstados = {};
+            }
+          }
+
           elementos.push({
             id: data[i][0],
             nombre: data[i][1],
@@ -476,6 +487,7 @@ function getInventario(laboratorio) {
             foto: data[i][6] || '',
             ubicacion: data[i][7] || '',
             fotoUbicacion: data[i][8] || '',
+            distribucionEstados: distribucionEstados, // Nueva propiedad
             laboratorio: lab
           });
         }
@@ -610,13 +622,27 @@ function saveElemento(elemento, laboratorio) {
       }
     }
 
+    // Procesar distribución de estados (JSON)
+    let distribucionEstadosJSON = '';
+    if (elemento.distribucionEstados && typeof elemento.distribucionEstados === 'object') {
+      // Validar que la distribución de estados tenga sentido
+      const total = Object.values(elemento.distribucionEstados).reduce((sum, val) => sum + parseInt(val || 0), 0);
+      if (total === parseInt(elemento.cantidad)) {
+        distribucionEstadosJSON = JSON.stringify(elemento.distribucionEstados);
+      } else {
+        Logger.log('Advertencia: La suma de estados (' + total + ') no coincide con la cantidad total (' + elemento.cantidad + ')');
+        // Aún así guardar la distribución
+        distribucionEstadosJSON = JSON.stringify(elemento.distribucionEstados);
+      }
+    }
+
     const data = sheet.getDataRange().getValues();
 
     // Si tiene ID, actualizar
     if (elemento.id) {
       for (let i = 1; i < data.length; i++) {
         if (data[i][0] === elemento.id) {
-          sheet.getRange(i + 1, 1, 1, 9).setValues([[
+          sheet.getRange(i + 1, 1, 1, 10).setValues([[
             elemento.id,
             elemento.nombre.trim(),
             parseInt(elemento.cantidad),
@@ -625,8 +651,27 @@ function saveElemento(elemento, laboratorio) {
             elemento.descripcion || '',
             fotoURL,
             elemento.ubicacion || '',
-            fotoUbicacionURL
+            fotoUbicacionURL,
+            distribucionEstadosJSON
           ]]);
+
+          // Registrar items "Fuera de servicio" en AltasBajas si aplica
+          if (elemento.tieneFueraServicio && elemento.cantidadFueraServicio > 0) {
+            const usuario = Session.getActiveUser().getEmail();
+            registrarAltaBaja(
+              'Baja',
+              elemento.id,
+              elemento.nombre.trim(),
+              elemento.cantidadFueraServicio,
+              'Artículos en estado: Fuera de servicio',
+              usuario,
+              laboratorio || LABORATORIOS.STEM
+            );
+          }
+
+          // Invalidar caché
+          clearInventarioCache(laboratorio);
+
           return { success: true };
         }
       }
@@ -643,8 +688,23 @@ function saveElemento(elemento, laboratorio) {
       elemento.descripcion || '',
       fotoURL,
       elemento.ubicacion || '',
-      fotoUbicacionURL
+      fotoUbicacionURL,
+      distribucionEstadosJSON
     ]);
+
+    // Registrar items "Fuera de servicio" en AltasBajas si aplica
+    if (elemento.tieneFueraServicio && elemento.cantidadFueraServicio > 0) {
+      const usuario = Session.getActiveUser().getEmail();
+      registrarAltaBaja(
+        'Baja',
+        elemento.id || id,
+        elemento.nombre.trim(),
+        elemento.cantidadFueraServicio,
+        'Artículos en estado: Fuera de servicio',
+        usuario,
+        laboratorio || LABORATORIOS.STEM
+      );
+    }
 
     // Invalidar caché
     clearInventarioCache(laboratorio);

@@ -1128,15 +1128,53 @@
                     <input type="text" id="elementoNombre" required>
                 </div>
                 <div class="form-group">
-                    <label>Cantidad *</label>
-                    <input type="number" id="elementoCantidad" min="0" required>
+                    <label>Cantidad Total *</label>
+                    <input type="number" id="elementoCantidad" min="0" required onchange="actualizarDistribucionEstados()">
+                    <small style="color: #999; display: block; margin-top: 4px;">
+                        Puedes distribuir esta cantidad por estados de conservación abajo
+                    </small>
                 </div>
+
+                <!-- Distribución de Estados -->
                 <div class="form-group">
-                    <label>Estado *</label>
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="usarDistribucionEstados" onchange="toggleDistribucionEstados()">
+                        <span>Distribuir cantidad por estados de conservación</span>
+                    </label>
+                    <div id="distribucionEstadosContainer" style="display: none; margin-top: 12px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                        <p style="margin-bottom: 12px; font-size: 0.9em; color: #666;">
+                            Indica cuántas unidades hay en cada estado (la suma debe coincidir con la cantidad total)
+                        </p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div>
+                                <label style="font-size: 0.9em; color: #555;">Bueno</label>
+                                <input type="number" id="estadoBueno" min="0" value="0" onchange="validarDistribucion()">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.9em; color: #555;">Regular</label>
+                                <input type="number" id="estadoRegular" min="0" value="0" onchange="validarDistribucion()">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.9em; color: #555;">Fuera de servicio</label>
+                                <input type="number" id="estadoFueraServicio" min="0" value="0" onchange="validarDistribucion()">
+                            </div>
+                        </div>
+                        <div id="distribucionWarning" style="display: none; margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; color: #856404; font-size: 0.85em;"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Estado General *</label>
                     <select id="elementoEstado" required>
                         <option value="Funcionamiento">Funcionamiento</option>
                         <option value="Reparación">Reparación</option>
+                        <option value="Bueno">Bueno</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Fuera de servicio">Fuera de servicio</option>
                     </select>
+                    <small style="color: #999; display: block; margin-top: 4px;">
+                        Si usas distribución de estados, este será ignorado
+                    </small>
                 </div>
                 <div class="form-group">
                     <label>Categoría *</label>
@@ -1881,11 +1919,29 @@
                     fotoHtml = `<img src="${item.foto}" class="item-image" onclick="viewImage('${item.foto}')" onerror="console.error('Error cargando imagen:', '${item.foto}'); this.style.display='none'; this.nextElementSibling.style.display='inline';" alt="${item.nombre}" loading="lazy"><span style="color: red; font-size: 11px; display: none;">❌ Error</span>`;
                 }
 
+                // Generar display de distribución de estados si existe
+                let cantidadDisplay = `<strong style="font-size: 16px;">${item.cantidad}</strong>`;
+                let estadoDisplay = `<span class="status-badge status-${item.estado.toLowerCase()}">${item.estado}</span>`;
+
+                if (item.distribucionEstados && Object.keys(item.distribucionEstados).length > 0) {
+                    // Mostrar distribución de estados
+                    const dist = item.distribucionEstados;
+                    let detalles = [];
+                    if (dist['Bueno'] > 0) detalles.push(`<span style="color: #4caf50;">✓ Bueno: ${dist['Bueno']}</span>`);
+                    if (dist['Regular'] > 0) detalles.push(`<span style="color: #ff9800;">⚠ Regular: ${dist['Regular']}</span>`);
+                    if (dist['Fuera de servicio'] > 0) detalles.push(`<span style="color: #f44336;">✗ Fuera de servicio: ${dist['Fuera de servicio']}</span>`);
+
+                    if (detalles.length > 0) {
+                        cantidadDisplay += `<br><small style="font-size: 11px; line-height: 1.6;">${detalles.join('<br>')}</small>`;
+                        estadoDisplay = '<span style="font-size: 12px; color: #666;">Ver cantidad →</span>';
+                    }
+                }
+
                 html += `<tr>
                     <td>${fotoHtml}</td>
                     <td><strong>${item.nombre}</strong><br><small style="color: #999;">${item.descripcion || ''}</small></td>
-                    <td style="text-align: center;"><strong style="font-size: 16px;">${item.cantidad}</strong></td>
-                    <td><span class="status-badge status-${item.estado.toLowerCase()}">${item.estado}</span></td>
+                    <td style="text-align: center;">${cantidadDisplay}</td>
+                    <td>${estadoDisplay}</td>
                     <td>${item.categoria}</td>
                     <td>${ubicacionDisplay}${fotoUbicacionIcon}</td>
                     ${currentUser.rol === 'Preparador' || currentUser.rol === 'Admin' ? `
@@ -1946,6 +2002,19 @@
             document.getElementById('elementoDescripcion').value = item.descripcion || '';
             document.getElementById('elementoUbicacion').value = item.ubicacion || '';
 
+            // Cargar distribución de estados si existe
+            if (item.distribucionEstados && Object.keys(item.distribucionEstados).length > 0) {
+                document.getElementById('usarDistribucionEstados').checked = true;
+                document.getElementById('distribucionEstadosContainer').style.display = 'block';
+                document.getElementById('estadoBueno').value = item.distribucionEstados['Bueno'] || 0;
+                document.getElementById('estadoRegular').value = item.distribucionEstados['Regular'] || 0;
+                document.getElementById('estadoFueraServicio').value = item.distribucionEstados['Fuera de servicio'] || 0;
+                validarDistribucion();
+            } else {
+                document.getElementById('usarDistribucionEstados').checked = false;
+                document.getElementById('distribucionEstadosContainer').style.display = 'none';
+            }
+
             const preview = document.getElementById('elementoImagePreview');
             if (item.foto) {
                 preview.innerHTML = `<img src="${item.foto}" alt="Preview">`;
@@ -1970,6 +2039,55 @@
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Guardar';
+            }
+            // Resetear distribución de estados
+            document.getElementById('usarDistribucionEstados').checked = false;
+            document.getElementById('distribucionEstadosContainer').style.display = 'none';
+        }
+
+        // Funciones para distribución de estados
+        function toggleDistribucionEstados() {
+            const checkbox = document.getElementById('usarDistribucionEstados');
+            const container = document.getElementById('distribucionEstadosContainer');
+
+            if (checkbox.checked) {
+                container.style.display = 'block';
+                // Si la cantidad total está definida, inicializar la primera opción con ese valor
+                const cantidadTotal = parseInt(document.getElementById('elementoCantidad').value) || 0;
+                if (cantidadTotal > 0) {
+                    document.getElementById('estadoBueno').value = cantidadTotal;
+                    document.getElementById('estadoRegular').value = 0;
+                    document.getElementById('estadoFueraServicio').value = 0;
+                }
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function actualizarDistribucionEstados() {
+            // Si la distribución está activada, ajustar valores
+            const checkbox = document.getElementById('usarDistribucionEstados');
+            if (!checkbox.checked) return;
+
+            validarDistribucion();
+        }
+
+        function validarDistribucion() {
+            const cantidadTotal = parseInt(document.getElementById('elementoCantidad').value) || 0;
+            const bueno = parseInt(document.getElementById('estadoBueno').value) || 0;
+            const regular = parseInt(document.getElementById('estadoRegular').value) || 0;
+            const fueraServicio = parseInt(document.getElementById('estadoFueraServicio').value) || 0;
+
+            const suma = bueno + regular + fueraServicio;
+            const warning = document.getElementById('distribucionWarning');
+
+            if (suma !== cantidadTotal) {
+                warning.style.display = 'block';
+                warning.textContent = `⚠️ La suma (${suma}) no coincide con la cantidad total (${cantidadTotal})`;
+                return false;
+            } else {
+                warning.style.display = 'none';
+                return true;
             }
         }
 
@@ -2252,6 +2370,18 @@
             updateLoadingProgress(10);
 
             try {
+                // Validar distribución de estados si está activada
+                const usarDistribucion = document.getElementById('usarDistribucionEstados').checked;
+                if (usarDistribucion) {
+                    if (!validarDistribucion()) {
+                        hideLoading();
+                        showNotification('❌ La distribución de estados no es válida. La suma debe coincidir con la cantidad total.', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalBtnText;
+                        return;
+                    }
+                }
+
                 const foto = document.getElementById('elementoFoto').files[0];
                 const fotoUbicacion = document.getElementById('elementoFotoUbicacion').files[0];
                 const elemento = {
@@ -2263,6 +2393,25 @@
                     descripcion: document.getElementById('elementoDescripcion').value,
                     ubicacion: document.getElementById('elementoUbicacion').value
                 };
+
+                // Agregar distribución de estados si está activada
+                if (usarDistribucion) {
+                    const bueno = parseInt(document.getElementById('estadoBueno').value) || 0;
+                    const regular = parseInt(document.getElementById('estadoRegular').value) || 0;
+                    const fueraServicio = parseInt(document.getElementById('estadoFueraServicio').value) || 0;
+
+                    elemento.distribucionEstados = {
+                        'Bueno': bueno,
+                        'Regular': regular,
+                        'Fuera de servicio': fueraServicio
+                    };
+
+                    // Si hay items "Fuera de servicio", registrarlos automáticamente
+                    if (fueraServicio > 0) {
+                        elemento.tieneFueraServicio = true;
+                        elemento.cantidadFueraServicio = fueraServicio;
+                    }
+                }
 
                 // Mantener fotos existentes si es edición
                 const existingItem = inventario.find(i => i.id === elemento.id);
