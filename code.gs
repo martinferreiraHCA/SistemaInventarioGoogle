@@ -1559,11 +1559,28 @@ function notificarNuevaSolicitud(solicitud, laboratorio) {
     const fechaInicioAmigable = formatFechaAmigable(fechaInicioStr);
     const fechaFinAmigable = formatFechaAmigable(fechaFinStr);
 
-    // Formatear múltiples días seleccionados
+    // Formatear múltiples días con horas seleccionados
     const fechaNecesariaStr = typeof solicitud.fechaNecesaria === 'string' ? solicitud.fechaNecesaria : formatDate(solicitud.fechaNecesaria);
-    const fechasArray = fechaNecesariaStr.split(',').map(f => f.trim());
-    const fechasFormateadas = fechasArray.map(f => formatFechaAmigable(f));
-    const diasNecesariosTexto = fechasFormateadas.map(f => `  • ${f}`).join('\n');
+    const horasNombres = ['', '1ra', '2da', '3ra', '4ta', '5ta', '6ta', '7ma', '8va', '9na', '10ma'];
+    let diasNecesariosTexto = '';
+
+    // Verificar si es formato nuevo (con horas) o antiguo (solo fechas)
+    if (fechaNecesariaStr.includes(':')) {
+      // Nuevo formato: fecha1:hora1,hora2|fecha2:hora3,hora4
+      const diasConHoras = fechaNecesariaStr.split('|');
+      diasNecesariosTexto = diasConHoras.map(diaHora => {
+        const partes = diaHora.split(':');
+        const fecha = partes[0];
+        const horasStr = partes[1];
+        const horas = horasStr.split(',').map(h => horasNombres[parseInt(h)]).join(', ');
+        return `  • ${formatFechaAmigable(fecha)}\n    Horas: ${horas}`;
+      }).join('\n');
+    } else {
+      // Formato antiguo: fecha1,fecha2,fecha3
+      const fechasArray = fechaNecesariaStr.split(',').map(f => f.trim());
+      const fechasFormateadas = fechasArray.map(f => formatFechaAmigable(f));
+      diasNecesariosTexto = fechasFormateadas.map(f => `  • ${f}`).join('\n');
+    }
 
     const materialesExtra = solicitud.materialesExtra || 'Ninguno';
 
@@ -1669,12 +1686,29 @@ function marcarSolicitudPreparada(data, laboratorio) {
         const fechaInicioAmigable = formatFechaAmigable(fechaInicioStr);
         const fechaFinAmigable = formatFechaAmigable(fechaFinStr);
 
-        // Formatear múltiples días seleccionados
+        // Formatear múltiples días con horas seleccionados
         // Convertir fechaNecesaria a string primero (puede venir como Date object de Sheets)
         const fechaNecesariaStr = typeof fechaNecesaria === 'string' ? fechaNecesaria : formatDate(fechaNecesaria);
-        const fechasArray = fechaNecesariaStr.split(',').map(f => f.trim());
-        const fechasFormateadas = fechasArray.map(f => formatFechaAmigable(f));
-        const diasNecesariosTexto = fechasFormateadas.map(f => `  • ${f}`).join('\n');
+        const horasNombres = ['', '1ra', '2da', '3ra', '4ta', '5ta', '6ta', '7ma', '8va', '9na', '10ma'];
+        let diasNecesariosTexto = '';
+
+        // Verificar si es formato nuevo (con horas) o antiguo (solo fechas)
+        if (fechaNecesariaStr.includes(':')) {
+          // Nuevo formato: fecha1:hora1,hora2|fecha2:hora3,hora4
+          const diasConHoras = fechaNecesariaStr.split('|');
+          diasNecesariosTexto = diasConHoras.map(diaHora => {
+            const partes = diaHora.split(':');
+            const fecha = partes[0];
+            const horasStr = partes[1];
+            const horas = horasStr.split(',').map(h => horasNombres[parseInt(h)]).join(', ');
+            return `  • ${formatFechaAmigable(fecha)}\n    Horas: ${horas}`;
+          }).join('\n');
+        } else {
+          // Formato antiguo: fecha1,fecha2,fecha3
+          const fechasArray = fechaNecesariaStr.split(',').map(f => f.trim());
+          const fechasFormateadas = fechasArray.map(f => formatFechaAmigable(f));
+          diasNecesariosTexto = fechasFormateadas.map(f => `  • ${f}`).join('\n');
+        }
 
         // Construir email con todos los detalles
         const emailBody = `Estimado/a ${nombreDocente},
