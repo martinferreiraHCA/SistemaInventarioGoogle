@@ -462,18 +462,23 @@ function getInventario(laboratorio) {
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][0]) { // Si tiene ID
-        elementos.push({
-          id: data[i][0],
-          nombre: data[i][1],
-          cantidad: data[i][2],
-          estado: data[i][3],
-          categoria: data[i][4],
-          descripcion: data[i][5] || '',
-          foto: data[i][6] || '',
-          ubicacion: data[i][7] || '',
-          fotoUbicacion: data[i][8] || '',
-          laboratorio: lab
-        });
+        const estado = data[i][3];
+
+        // FILTRAR: Solo mostrar elementos que NO estén dados de baja
+        if (estado !== 'Dado de baja') {
+          elementos.push({
+            id: data[i][0],
+            nombre: data[i][1],
+            cantidad: data[i][2],
+            estado: estado,
+            categoria: data[i][4],
+            descripcion: data[i][5] || '',
+            foto: data[i][6] || '',
+            ubicacion: data[i][7] || '',
+            fotoUbicacion: data[i][8] || '',
+            laboratorio: lab
+          });
+        }
       }
     }
 
@@ -720,11 +725,12 @@ function getEstadisticasInventario(laboratorio) {
 }
 
 /**
- * Elimina un elemento del inventario
+ * Da de baja un elemento del inventario (cambia estado a "Dado de baja")
  */
 function deleteElemento(id, laboratorio) {
   try {
-    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
     if (!ss) {
       return { success: false, error: 'Laboratorio inválido' };
     }
@@ -734,9 +740,20 @@ function deleteElemento(id, laboratorio) {
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === id) {
-        sheet.deleteRow(i + 1);
+        const elementoNombre = data[i][1];
+        const cantidad = data[i][2];
+
+        // Cambiar estado a "Dado de baja" en lugar de eliminar la fila
+        sheet.getRange(i + 1, 4).setValue('Dado de baja');
+
+        // Registrar en AltasBajas
+        const usuario = Session.getActiveUser().getEmail();
+        registrarAltaBaja('Baja', id, elementoNombre, cantidad, 'Dado de baja desde inventario', usuario, lab);
+
+        Logger.log('Elemento dado de baja: ' + elementoNombre + ' (ID: ' + id + ')');
+
         // Invalidar caché
-        clearInventarioCache(laboratorio);
+        clearInventarioCache(lab);
         return { success: true };
       }
     }
