@@ -2104,6 +2104,34 @@
             document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
 
+            // Cargar datos específicos según la vista
+            switch(viewId) {
+                case 'inventarioView':
+                    if (inventario.length === 0) {
+                        loadInventario();
+                    }
+                    break;
+                case 'altasBajasView':
+                    loadAltasBajas();
+                    break;
+                case 'bitacoraView':
+                    if (typeof loadBitacora === 'function') {
+                        loadBitacora();
+                    }
+                    break;
+                case 'categoriasView':
+                    if (typeof loadCategorias === 'function') {
+                        loadCategorias();
+                    }
+                    break;
+                case 'gestionSolicitudesView':
+                case 'solicitudesDocenteView':
+                    if (typeof loadSolicitudes === 'function') {
+                        loadSolicitudes();
+                    }
+                    break;
+            }
+
             // Cerrar sidebar en móvil
             if (window.innerWidth <= 768) {
                 toggleSidebar();
