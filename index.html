@@ -2625,21 +2625,43 @@
             return html;
         }
 
-        // Función para formatear múltiples días seleccionados
-        function formatearDiasNecesarios(fechasStr) {
-            if (!fechasStr) return '';
+        // Función para formatear múltiples días con sus horas seleccionadas
+        function formatearDiasNecesarios(fechasHorasStr) {
+            if (!fechasHorasStr) return '';
 
-            const fechas = fechasStr.split(',').map(f => f.trim());
-            if (fechas.length === 1) {
-                // Si es solo una fecha, mostrar normal
-                return formatearFechaAmigable(fechas[0]);
+            const horasNombres = ['', '1ra', '2da', '3ra', '4ta', '5ta', '6ta', '7ma', '8va', '9na', '10ma'];
+
+            // Manejar formato antiguo (solo fechas separadas por comas) para retrocompatibilidad
+            if (!fechasHorasStr.includes(':')) {
+                const fechas = fechasHorasStr.split(',').map(f => f.trim());
+                if (fechas.length === 1) {
+                    return formatearFechaAmigable(fechas[0]);
+                }
+                const fechasFormateadas = fechas.map(f => formatearFechaAmigable(f));
+                return '<ul style="margin: 5px 0; padding-left: 20px;">' +
+                       fechasFormateadas.map(f => `<li>${f}</li>`).join('') +
+                       '</ul>';
             }
 
-            // Si son múltiples, mostrar como lista
-            const fechasFormateadas = fechas.map(f => formatearFechaAmigable(f));
-            return '<ul style="margin: 5px 0; padding-left: 20px;">' +
-                   fechasFormateadas.map(f => `<li>${f}</li>`).join('') +
-                   '</ul>';
+            // Nuevo formato: fecha1:hora1,hora2|fecha2:hora3,hora4
+            const diasConHoras = fechasHorasStr.split('|');
+
+            if (diasConHoras.length === 1) {
+                // Un solo día con horas
+                const [fecha, horasStr] = diasConHoras[0].split(':');
+                const horas = horasStr.split(',').map(h => horasNombres[parseInt(h)]);
+                return `${formatearFechaAmigable(fecha)} <br><small style="color: #666;">Horas: ${horas.join(', ')}</small>`;
+            }
+
+            // Múltiples días con horas
+            let html = '<ul style="margin: 5px 0; padding-left: 20px;">';
+            diasConHoras.forEach(diaHora => {
+                const [fecha, horasStr] = diaHora.split(':');
+                const horas = horasStr.split(',').map(h => horasNombres[parseInt(h)]);
+                html += `<li>${formatearFechaAmigable(fecha)} <br><small style="color: #666; margin-left: 8px;">Horas: ${horas.join(', ')}</small></li>`;
+            });
+            html += '</ul>';
+            return html;
         }
 
         // Función para formatear una fecha en español amigable
@@ -2938,7 +2960,7 @@
             actualizarPreviewImagenes();
         }
 
-        // Generar días disponibles basados en el rango de fechas
+        // Generar días disponibles basados en el rango de fechas con selección de horas
         function generarDiasDisponibles() {
             const fechaInicio = document.getElementById('solicitudFechaInicio').value;
             const fechaFin = document.getElementById('solicitudFechaFin').value;
@@ -2961,7 +2983,7 @@
             const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-            let html = '<p style="margin-bottom: 10px; font-weight: 600; color: var(--azul-principal);">Seleccione los días que necesita:</p>';
+            let html = '<p style="margin-bottom: 15px; font-weight: 600; color: var(--azul-principal);">Seleccione los días y horas que necesita:</p>';
 
             let fechaActual = new Date(inicio);
             while (fechaActual <= fin) {
@@ -2972,16 +2994,56 @@
                 const fechaStr = fechaActual.toISOString().split('T')[0];
 
                 html += `
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-radius: 4px; background: white; margin-bottom: 4px;">
-                        <input type="checkbox" name="diaNecesario" value="${fechaStr}" style="cursor: pointer; width: 18px; height: 18px;">
-                        <span style="flex: 1;">${diaSemana}, ${dia} de ${mes} de ${año}</span>
-                    </label>
+                    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 12px; overflow: hidden;">
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 12px; cursor: pointer; background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                            <input type="checkbox" class="dia-checkbox" data-fecha="${fechaStr}" onchange="toggleHorasDia('${fechaStr}')" style="cursor: pointer; width: 20px; height: 20px;">
+                            <span style="flex: 1; font-weight: 600; color: var(--azul-principal);">${diaSemana}, ${dia} de ${mes} de ${año}</span>
+                        </label>
+                        <div id="horas-${fechaStr}" style="display: none; padding: 12px; background: #fafbfc;">
+                            <p style="font-size: 13px; color: #666; margin-bottom: 10px; font-weight: 500;">Seleccione las horas necesarias:</p>
+                            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                                ${generarCheckboxesHoras(fechaStr)}
+                            </div>
+                        </div>
+                    </div>
                 `;
 
                 fechaActual.setDate(fechaActual.getDate() + 1);
             }
 
             container.innerHTML = html;
+        }
+
+        // Generar checkboxes de horas (1ra a 10ma)
+        function generarCheckboxesHoras(fecha) {
+            let html = '';
+            const horas = ['1ra', '2da', '3ra', '4ta', '5ta', '6ta', '7ma', '8va', '9na', '10ma'];
+
+            horas.forEach((hora, index) => {
+                html += `
+                    <label style="display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: white; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--azul-principal)'" onmouseout="this.style.borderColor='#e5e7eb'">
+                        <input type="checkbox" name="hora-${fecha}" value="${index + 1}" style="cursor: pointer;">
+                        <span>${hora}</span>
+                    </label>
+                `;
+            });
+
+            return html;
+        }
+
+        // Mostrar/ocultar horas cuando se selecciona un día
+        function toggleHorasDia(fecha) {
+            const checkbox = document.querySelector(`.dia-checkbox[data-fecha="${fecha}"]`);
+            const horasContainer = document.getElementById(`horas-${fecha}`);
+
+            if (checkbox.checked) {
+                horasContainer.style.display = 'block';
+            } else {
+                horasContainer.style.display = 'none';
+                // Desmarcar todas las horas de este día
+                const horasCheckboxes = document.querySelectorAll(`input[name="hora-${fecha}"]`);
+                horasCheckboxes.forEach(cb => cb.checked = false);
+            }
         }
 
         function loadMaterialesSelector() {
@@ -3050,23 +3112,41 @@
 
                 updateLoadingProgress(30);
 
-                // Recopilar días necesarios seleccionados
-                const diasCheckboxes = document.querySelectorAll('input[name="diaNecesario"]:checked');
-                const diasSeleccionados = Array.from(diasCheckboxes).map(cb => cb.value);
+                // Recopilar días y horas necesarios seleccionados
+                const diasCheckboxes = document.querySelectorAll('.dia-checkbox:checked');
+                const diasConHoras = [];
 
-                if (diasSeleccionados.length === 0) {
+                diasCheckboxes.forEach(diaCheckbox => {
+                    const fecha = diaCheckbox.dataset.fecha;
+                    const horasCheckboxes = document.querySelectorAll(`input[name="hora-${fecha}"]:checked`);
+                    const horasSeleccionadas = Array.from(horasCheckboxes).map(cb => cb.value);
+
+                    if (horasSeleccionadas.length > 0) {
+                        diasConHoras.push({
+                            fecha: fecha,
+                            horas: horasSeleccionadas
+                        });
+                    }
+                });
+
+                if (diasConHoras.length === 0) {
                     hideLoading();
-                    showNotification('⚠️ Debe seleccionar al menos un día en que necesita el material', 'error');
+                    showNotification('⚠️ Debe seleccionar al menos un día con sus horas correspondientes', 'error');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Enviar Solicitud';
                     return;
                 }
 
+                // Convertir a string para guardar: fecha1:hora1,hora2,hora3|fecha2:hora4,hora5
+                const fechasHorasStr = diasConHoras.map(dia =>
+                    `${dia.fecha}:${dia.horas.join(',')}`
+                ).join('|');
+
                 const solicitud = {
                     nombre: document.getElementById('solicitudNombre').value,
                     fechaInicio: document.getElementById('solicitudFechaInicio').value,
                     fechaFin: document.getElementById('solicitudFechaFin').value,
-                    fechaNecesaria: diasSeleccionados.join(','), // Guardar como string separado por comas
+                    fechaNecesaria: fechasHorasStr, // Guardar con formato: fecha1:hora1,hora2|fecha2:hora3,hora4
                     materiales: materialesSeleccionados.join(', '),
                     materialesExtra: document.getElementById('solicitudMaterialesExtra').value,
                     docente: currentUser.nombre,
