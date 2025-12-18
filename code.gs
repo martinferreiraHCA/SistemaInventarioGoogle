@@ -2192,12 +2192,21 @@ function registrarAltaBaja(tipo, elementoId, elementoNombre, cantidad, motivo, u
     // 1. Registrar en historial de AltasBajas
     let sheet = ss.getSheetByName(SHEETS.ALTAS_BAJAS);
     if (!sheet) {
-      initializeSheets();
-      sheet = ss.getSheetByName(SHEETS.ALTAS_BAJAS);
+      Logger.log('⚠️ Hoja ALTAS_BAJAS no existe, creándola para ' + lab);
+      // Crear la hoja si no existe
+      sheet = ss.insertSheet(SHEETS.ALTAS_BAJAS);
+      sheet.getRange(1, 1, 1, 8).setValues([[
+        'ID', 'Fecha', 'Tipo', 'ElementoID', 'ElementoNombre', 'Cantidad', 'Motivo', 'Usuario'
+      ]]);
+      sheet.getRange(1, 1, 1, 8).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+      Logger.log('✅ Hoja ALTAS_BAJAS creada');
     }
 
     const id = Utilities.getUuid();
     const fecha = new Date();
+
+    Logger.log('📝 Registrando ' + tipo + ' de ' + cantidad + ' unidades de ' + elementoNombre);
 
     sheet.appendRow([
       id,
@@ -2209,6 +2218,8 @@ function registrarAltaBaja(tipo, elementoId, elementoNombre, cantidad, motivo, u
       motivo || '',
       usuario
     ]);
+
+    Logger.log('✅ Registro guardado en hoja ALTAS_BAJAS');
 
     // 2. Actualizar cantidad en inventario
     const inventarioSheet = ss.getSheetByName(SHEETS.INVENTARIO);
@@ -2267,7 +2278,8 @@ function getAltasBajas(laboratorio) {
   try {
     Logger.log('📥 getAltasBajas() llamado para laboratorio: ' + (laboratorio || LABORATORIOS.STEM));
 
-    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
     if (!ss) {
       Logger.log('❌ No se encontró spreadsheet para laboratorio');
       return [];
@@ -2275,7 +2287,16 @@ function getAltasBajas(laboratorio) {
 
     let sheet = ss.getSheetByName(SHEETS.ALTAS_BAJAS);
     if (!sheet) {
-      Logger.log('⚠️ No existe la hoja ALTAS_BAJAS');
+      Logger.log('⚠️ No existe la hoja ALTAS_BAJAS, creándola...');
+      // Crear la hoja si no existe
+      sheet = ss.insertSheet(SHEETS.ALTAS_BAJAS);
+      sheet.getRange(1, 1, 1, 8).setValues([[
+        'ID', 'Fecha', 'Tipo', 'ElementoID', 'ElementoNombre', 'Cantidad', 'Motivo', 'Usuario'
+      ]]);
+      sheet.getRange(1, 1, 1, 8).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+      Logger.log('✅ Hoja ALTAS_BAJAS creada exitosamente');
+      // Devolver array vacío ya que acabamos de crear la hoja
       return [];
     }
 
