@@ -1186,19 +1186,15 @@
         </div>
     </div>
 
-    <!-- Pantalla de Login -->
+    <!-- Pantalla de Autenticación -->
     <div id="loginView" class="login-container">
         <div class="login-box">
             <h1>Sistema de Gestión<br>de Laboratorio</h1>
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="loginEmail" placeholder="Ingrese su email">
+            <div style="text-align: center; padding: 40px 20px;">
+                <div class="spinner" style="margin: 0 auto 20px;"></div>
+                <p style="color: #666; font-size: 16px; margin-bottom: 8px;">Autenticando con Google...</p>
+                <small style="color: #999; font-size: 13px;">Usando tu cuenta de Google</small>
             </div>
-            <div class="form-group">
-                <label>Contraseña</label>
-                <input type="password" id="loginPassword" placeholder="Ingrese su contraseña">
-            </div>
-            <button class="btn btn-primary" style="width: 100%;" onclick="login()">Iniciar Sesión</button>
         </div>
     </div>
 
@@ -1221,7 +1217,6 @@
                 </div>
             </div>
             <nav id="menuNav"></nav>
-            <button class="btn btn-primary" onclick="openPasswordModal()" style="width: calc(100% - 40px); margin: 10px 20px;">Cambiar Contraseña</button>
             <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
         </div>
 
@@ -1838,24 +1833,11 @@
             document.getElementById('passwordForm').addEventListener('submit', cambiarContrasena);
         });
 
-        // Verificar sesión guardada en localStorage
+        // Auto-iniciar autenticación con Google
         function checkSavedSession() {
-            const savedUser = localStorage.getItem('currentUser');
-            const savedLab = localStorage.getItem('currentLaboratorio');
-
-            if (savedUser) {
-                try {
-                    currentUser = JSON.parse(savedUser);
-                    currentLaboratorio = savedLab || currentUser.laboratorio || 'STEM';
-                    document.getElementById('loginView').style.display = 'none';
-                    document.getElementById('mainSystem').style.display = 'block';
-                    initializeSystem();
-                } catch (e) {
-                    // Si hay error al parsear, limpiar localStorage
-                    localStorage.removeItem('currentUser');
-                    localStorage.removeItem('currentLaboratorio');
-                }
-            }
+            console.log('🚀 Iniciando autenticación automática con Google...');
+            // Siempre autenticar con Google, no usar localStorage
+            authenticateWithGoogle();
         }
 
         // Guardar sesión en localStorage
@@ -1873,50 +1855,70 @@
             currentUser = null;
         }
 
-        // Autenticación
-        function login() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-
-            if (!email || !password) {
-                showNotification('Por favor complete todos los campos', 'error');
-                return;
-            }
-
-            showLoading('Iniciando sesión...', 'Verificando credenciales');
-            updateLoadingProgress(30);
+        // Autenticación con Google
+        function authenticateWithGoogle() {
+            console.log('🔐 Iniciando autenticación con Google...');
 
             google.script.run
                 .withSuccessHandler(function(result) {
+                    console.log('✅ Respuesta de autenticación:', result);
+
                     if (result.success) {
-                        updateLoadingProgress(60, 'Sesión iniciada', 'Cargando datos del sistema');
                         currentUser = result.user;
                         currentLaboratorio = currentUser.laboratorio || 'STEM';
-                        // Guardar sesión en localStorage
+
+                        // Guardar en localStorage
                         saveSession();
+
+                        // Ocultar login y mostrar sistema
                         document.getElementById('loginView').style.display = 'none';
                         document.getElementById('mainSystem').style.display = 'block';
+
+                        // Inicializar sistema
                         initializeSystem();
-                        showNotification('Bienvenido ' + currentUser.nombre);
+
+                        // Mensaje de bienvenida
+                        if (result.isNewUser) {
+                            showNotification('¡Bienvenido! Se ha creado tu usuario como Docente. Contacta al administrador para cambiar tu rol.', 'info');
+                        } else {
+                            showNotification('Bienvenido ' + currentUser.nombre);
+                        }
                     } else {
-                        hideLoading();
-                        showNotification(result.message || 'Credenciales incorrectas', 'error');
+                        console.error('❌ Error en autenticación:', result.message);
+                        document.getElementById('loginView').innerHTML = `
+                            <div class="login-box">
+                                <h1>Error de Autenticación</h1>
+                                <div style="padding: 20px; text-align: center;">
+                                    <p style="color: #f44336; margin-bottom: 20px;">${result.message || 'No se pudo autenticar'}</p>
+                                    <button class="btn btn-primary" onclick="location.reload()">Reintentar</button>
+                                </div>
+                            </div>
+                        `;
                     }
                 })
                 .withFailureHandler(function(error) {
-                    hideLoading();
-                    showNotification('Error al iniciar sesión: ' + error.message, 'error');
+                    console.error('❌ Error al autenticar:', error);
+                    document.getElementById('loginView').innerHTML = `
+                        <div class="login-box">
+                            <h1>Error del Sistema</h1>
+                            <div style="padding: 20px; text-align: center;">
+                                <p style="color: #f44336; margin-bottom: 10px;">No se pudo conectar con el servidor</p>
+                                <small style="color: #999; display: block; margin-bottom: 20px;">${error.message}</small>
+                                <button class="btn btn-primary" onclick="location.reload()">Reintentar</button>
+                            </div>
+                        </div>
+                    `;
                 })
-                .loginUser(email, password);
+                .authenticateWithGoogle();
         }
 
         function logout() {
             clearSession(); // Limpiar localStorage
-            document.getElementById('loginView').style.display = 'flex';
-            document.getElementById('mainSystem').style.display = 'none';
-            document.getElementById('loginEmail').value = '';
-            document.getElementById('loginPassword').value = '';
-            showNotification('Sesión cerrada correctamente');
+            showNotification('Cerrando sesión...');
+            // Recargar la página para cerrar sesión (Google Apps Script maneja esto)
+            setTimeout(() => {
+                location.reload();
+            }, 500);
         }
 
         // Aplicar colores según el laboratorio
