@@ -343,6 +343,114 @@ function uploadDocument(base64Data, fileName) {
 /**
  * Autentica un usuario
  */
+/**
+ * Autentica al usuario usando su cuenta de Google
+ * No requiere contraseña - usa Session.getActiveUser()
+ */
+function authenticateWithGoogle() {
+  try {
+    // Obtener email del usuario autenticado con Google
+    const userEmail = Session.getActiveUser().getEmail();
+
+    Logger.log('🔐 Autenticación con Google para: ' + userEmail);
+
+    if (!userEmail) {
+      return {
+        success: false,
+        message: 'No se pudo obtener el email del usuario. Asegúrese de estar autenticado con Google.'
+      };
+    }
+
+    // Buscar usuario en la base de datos (solo por email, sin password)
+    const ss = SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.USUARIOS);
+
+    if (!sheet) {
+      Logger.log('⚠️ Hoja de usuarios no existe, inicializando...');
+      initializeSheets();
+      sheet = ss.getSheetByName(SHEETS.USUARIOS);
+    }
+
+    const data = sheet.getDataRange().getValues();
+
+    // Buscar usuario por email
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][2] === userEmail) {
+        // Usuario encontrado
+        const laboratoriosStr = data[i][5] || 'STEM';
+        const laboratoriosArray = laboratoriosStr.split(',').map(lab => lab.trim());
+
+        Logger.log('✅ Usuario encontrado: ' + data[i][1] + ' - Rol: ' + data[i][4]);
+
+        return {
+          success: true,
+          user: {
+            id: data[i][0],
+            nombre: data[i][1],
+            email: data[i][2],
+            rol: data[i][4],
+            laboratorios: laboratoriosArray,
+            laboratorio: laboratoriosArray[0]
+          }
+        };
+      }
+    }
+
+    // Usuario no encontrado - crear como Docente por defecto
+    Logger.log('⚠️ Usuario no encontrado, creando nuevo usuario como Docente');
+
+    const newUserId = Utilities.getUuid();
+    const userName = userEmail.split('@')[0]; // Usar parte del email como nombre temporal
+
+    sheet.appendRow([
+      newUserId,
+      userName,
+      userEmail,
+      '', // Sin password
+      'Docente', // Rol por defecto
+      'STEM' // Laboratorio por defecto
+    ]);
+
+    Logger.log('✅ Nuevo usuario creado: ' + userName);
+
+    return {
+      success: true,
+      user: {
+        id: newUserId,
+        nombre: userName,
+        email: userEmail,
+        rol: 'Docente',
+        laboratorios: ['STEM'],
+        laboratorio: 'STEM'
+      },
+      isNewUser: true
+    };
+
+  } catch (error) {
+    Logger.log('❌ Error en autenticación con Google: ' + error);
+    return {
+      success: false,
+      message: 'Error al autenticar: ' + error.toString()
+    };
+  }
+}
+
+/**
+ * Obtiene el email del usuario actual autenticado con Google
+ */
+function getCurrentUserEmail() {
+  try {
+    return Session.getActiveUser().getEmail();
+  } catch (error) {
+    Logger.log('Error al obtener email del usuario: ' + error);
+    return null;
+  }
+}
+
+/**
+ * FUNCIÓN LEGACY - Mantener para compatibilidad con usuarios existentes
+ * Autentica con email/password (solo para usuarios que ya tienen password)
+ */
 function loginUser(email, password) {
   try {
     // Validar entrada
