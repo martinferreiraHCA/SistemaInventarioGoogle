@@ -28,7 +28,9 @@ const SHEETS = {
   SOLICITUDES: 'Solicitudes',
   BITACORA: 'Bitacora',
   CATEGORIAS: 'Categorias',
-  ALTAS_BAJAS: 'AltasBajas'
+  ALTAS_BAJAS: 'AltasBajas',
+  CLASES: 'Clases',
+  CONFIG_CUENTAS: 'ConfigCuentas'
 };
 
 // Función helper para obtener el spreadsheet según el laboratorio
@@ -2472,6 +2474,353 @@ function deleteAltaBaja(id, laboratorio) {
     return { success: false, error: 'Registro no encontrado' };
   } catch (error) {
     Logger.log('Error al eliminar alta/baja: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== GESTIÓN DE CLASES ====================
+
+/**
+ * Obtiene las clases de un laboratorio
+ */
+function getClases(laboratorio) {
+  try {
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
+    if (!ss) return [];
+
+    let sheet = ss.getSheetByName(SHEETS.CLASES);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEETS.CLASES);
+      sheet.getRange(1, 1, 1, 5).setValues([['ID', 'Nombre', 'Codigo', 'Docente', 'Descripcion']]);
+      sheet.getRange(1, 1, 1, 5).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+      return [];
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const clases = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        clases.push({
+          id: data[i][0],
+          nombre: data[i][1],
+          codigo: data[i][2],
+          docente: data[i][3] || '',
+          descripcion: data[i][4] || ''
+        });
+      }
+    }
+
+    return clases;
+  } catch (error) {
+    Logger.log('Error al obtener clases: ' + error);
+    return [];
+  }
+}
+
+/**
+ * Guarda una clase (nueva o actualiza existente)
+ */
+function saveClase(clase, laboratorio) {
+  try {
+    if (!clase.nombre || !clase.codigo) {
+      return { success: false, error: 'Nombre y código son requeridos' };
+    }
+
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
+    if (!ss) return { success: false, error: 'Laboratorio inválido' };
+
+    let sheet = ss.getSheetByName(SHEETS.CLASES);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEETS.CLASES);
+      sheet.getRange(1, 1, 1, 5).setValues([['ID', 'Nombre', 'Codigo', 'Docente', 'Descripcion']]);
+      sheet.getRange(1, 1, 1, 5).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    }
+
+    const data = sheet.getDataRange().getValues();
+
+    // Verificar código duplicado
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][2] === clase.codigo.trim() && data[i][0] !== clase.id) {
+        return { success: false, error: 'El código de clase ya existe' };
+      }
+    }
+
+    if (clase.id) {
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === clase.id) {
+          sheet.getRange(i + 1, 1, 1, 5).setValues([[
+            clase.id, clase.nombre.trim(), clase.codigo.trim(),
+            clase.docente || '', clase.descripcion || ''
+          ]]);
+          return { success: true };
+        }
+      }
+    }
+
+    const id = Utilities.getUuid();
+    sheet.appendRow([id, clase.nombre.trim(), clase.codigo.trim(), clase.docente || '', clase.descripcion || '']);
+    return { success: true };
+  } catch (error) {
+    Logger.log('Error al guardar clase: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Elimina una clase
+ */
+function deleteClase(id, laboratorio) {
+  try {
+    const ss = getSpreadsheetByLab(laboratorio || LABORATORIOS.STEM);
+    if (!ss) return { success: false, error: 'Laboratorio inválido' };
+
+    const sheet = ss.getSheetByName(SHEETS.CLASES);
+    if (!sheet) return { success: false, error: 'Hoja no encontrada' };
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === id) {
+        sheet.deleteRow(i + 1);
+        return { success: true };
+      }
+    }
+    return { success: false, error: 'Clase no encontrada' };
+  } catch (error) {
+    Logger.log('Error al eliminar clase: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Importa múltiples clases a la vez
+ */
+function importarClases(clasesArray, laboratorio) {
+  try {
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
+    if (!ss) return { success: false, error: 'Laboratorio inválido' };
+
+    let sheet = ss.getSheetByName(SHEETS.CLASES);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEETS.CLASES);
+      sheet.getRange(1, 1, 1, 5).setValues([['ID', 'Nombre', 'Codigo', 'Docente', 'Descripcion']]);
+      sheet.getRange(1, 1, 1, 5).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    }
+
+    const existingData = sheet.getDataRange().getValues();
+    const existingCodes = new Set();
+    for (let i = 1; i < existingData.length; i++) {
+      if (existingData[i][2]) existingCodes.add(existingData[i][2]);
+    }
+
+    let count = 0;
+    const rows = [];
+
+    clasesArray.forEach(function(clase) {
+      if (clase.codigo && !existingCodes.has(clase.codigo.trim())) {
+        const id = Utilities.getUuid();
+        rows.push([id, (clase.nombre || '').trim(), clase.codigo.trim(), clase.docente || '', clase.descripcion || '']);
+        existingCodes.add(clase.codigo.trim());
+        count++;
+      }
+    });
+
+    if (rows.length > 0) {
+      sheet.getRange(existingData.length + 1, 1, rows.length, 5).setValues(rows);
+    }
+
+    return { success: true, count: count };
+  } catch (error) {
+    Logger.log('Error al importar clases: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Asigna docentes a clases
+ */
+function asignarClases(asignaciones, laboratorio) {
+  try {
+    const lab = laboratorio || LABORATORIOS.STEM;
+    const ss = getSpreadsheetByLab(lab);
+    if (!ss) return { success: false, error: 'Laboratorio inválido' };
+
+    const sheet = ss.getSheetByName(SHEETS.CLASES);
+    if (!sheet) return { success: false, error: 'Hoja de clases no encontrada' };
+
+    const data = sheet.getDataRange().getValues();
+    let count = 0;
+
+    asignaciones.forEach(function(asig) {
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === asig.claseId) {
+          sheet.getRange(i + 1, 4).setValue(asig.docente);
+          data[i][3] = asig.docente;
+          count++;
+          break;
+        }
+      }
+    });
+
+    return { success: true, count: count };
+  } catch (error) {
+    Logger.log('Error al asignar clases: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== CONFIGURACIÓN DE CUENTAS ====================
+
+/**
+ * Obtiene la configuración de cuentas
+ */
+function getAccountConfig() {
+  try {
+    const ss = SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.CONFIG_CUENTAS);
+
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEETS.CONFIG_CUENTAS);
+      sheet.getRange(1, 1, 1, 2).setValues([['Clave', 'Valor']]);
+      sheet.getRange(1, 1, 1, 2).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+      // Defaults
+      const defaults = [
+        ['patronUsuario', 'inicial_apellido_sufijo'],
+        ['sufijoUsuario', 'hca'],
+        ['separadorUsuario', '.'],
+        ['dominioEmail', 'gmail.com'],
+        ['metodoPassword', 'segura'],
+        ['passwordLength', '10'],
+        ['sufijoPassword', 'hca'],
+        ['passwordFijo', 'Lab2024!']
+      ];
+      sheet.getRange(2, 1, defaults.length, 2).setValues(defaults);
+      return {
+        patronUsuario: 'inicial_apellido_sufijo',
+        sufijoUsuario: 'hca',
+        separadorUsuario: '.',
+        dominioEmail: 'gmail.com',
+        metodoPassword: 'segura',
+        passwordLength: '10',
+        sufijoPassword: 'hca',
+        passwordFijo: 'Lab2024!'
+      };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const config = {};
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        config[data[i][0]] = data[i][1] || '';
+      }
+    }
+    return config;
+  } catch (error) {
+    Logger.log('Error al obtener config de cuentas: ' + error);
+    return {};
+  }
+}
+
+/**
+ * Guarda la configuración de cuentas
+ */
+function saveAccountConfig(config) {
+  try {
+    const ss = SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.CONFIG_CUENTAS);
+
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEETS.CONFIG_CUENTAS);
+      sheet.getRange(1, 1, 1, 2).setValues([['Clave', 'Valor']]);
+      sheet.getRange(1, 1, 1, 2).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    }
+
+    // Clear existing data (except header)
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.getRange(2, 1, lastRow - 1, 2).clearContent();
+    }
+
+    const keys = Object.keys(config);
+    if (keys.length > 0) {
+      const rows = keys.map(function(key) { return [key, config[key]]; });
+      sheet.getRange(2, 1, rows.length, 2).setValues(rows);
+    }
+
+    return { success: true };
+  } catch (error) {
+    Logger.log('Error al guardar config de cuentas: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Crea usuarios masivamente
+ */
+function crearUsuariosMasivo(usuariosArray) {
+  try {
+    const ss = SpreadsheetApp.openById(INVENTARIO_STEM_SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.USUARIOS);
+
+    if (!sheet) {
+      return { success: false, error: 'Hoja de usuarios no encontrada' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const existingEmails = new Set();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][2]) existingEmails.add(data[i][2].toLowerCase());
+    }
+
+    let count = 0;
+    let skipped = 0;
+    const credenciales = [];
+    const rows = [];
+
+    usuariosArray.forEach(function(usuario) {
+      if (!usuario.nombre || !usuario.email || !usuario.password) return;
+
+      if (existingEmails.has(usuario.email.toLowerCase())) {
+        skipped++;
+        return;
+      }
+
+      const id = Utilities.getUuid();
+      rows.push([
+        id,
+        usuario.nombre.trim(),
+        usuario.email.trim(),
+        usuario.password,
+        usuario.rol || 'Docente',
+        usuario.laboratorio || 'STEM'
+      ]);
+
+      credenciales.push({
+        nombre: usuario.nombre,
+        email: usuario.email,
+        password: usuario.password,
+        rol: usuario.rol || 'Docente'
+      });
+
+      existingEmails.add(usuario.email.toLowerCase());
+      count++;
+    });
+
+    if (rows.length > 0) {
+      sheet.getRange(data.length + 1, 1, rows.length, 6).setValues(rows);
+    }
+
+    return { success: true, count: count, skipped: skipped, credenciales: credenciales };
+  } catch (error) {
+    Logger.log('Error al crear usuarios masivamente: ' + error);
     return { success: false, error: error.toString() };
   }
 }

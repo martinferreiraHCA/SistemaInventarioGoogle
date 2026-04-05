@@ -1357,6 +1357,142 @@
                     <div id="categoriasTable"></div>
                 </div>
             </div>
+
+            <!-- Vista: Clases -->
+            <div id="clasesView" class="view">
+                <div class="header">
+                    <h1>Gestión de Clases</h1>
+                    <p style="margin-top: 8px; color: #666; font-size: 14px;">Administra los códigos de clase de Google Classroom. Asigna clases a usuarios de forma masiva o individual.</p>
+                </div>
+                <div class="table-container">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+                        <button class="btn btn-success" onclick="openAddClaseModal()">Nueva Clase</button>
+                        <button class="btn btn-primary" onclick="openAsignarClasesModal()">Asignar Clases Automáticamente</button>
+                        <button class="btn btn-primary" onclick="openImportarClasesModal()">Importar Códigos</button>
+                        <button class="btn btn-primary" onclick="exportClases()">Exportar CSV</button>
+                    </div>
+                    <div class="search-bar" style="margin-bottom: 16px;">
+                        <input type="text" id="searchClases" placeholder="Buscar por nombre de clase o código..." oninput="filterClases()">
+                    </div>
+                    <div id="clasesTable"></div>
+                </div>
+            </div>
+
+            <!-- Vista: Configuración de Cuentas -->
+            <div id="configCuentasView" class="view">
+                <div class="header">
+                    <h1>Configuración de Cuentas</h1>
+                    <p style="margin-top: 8px; color: #666; font-size: 14px;">Configura los criterios para generar usuarios y contraseñas automáticamente. Crea usuarios masivamente.</p>
+                </div>
+                <div class="table-container">
+                    <!-- Configuración de Nombres de Usuario -->
+                    <div style="background: var(--gris-claro); border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="margin-bottom: 16px; color: var(--azul-principal);">Criterios para Nombres de Usuario (Email)</h3>
+                        <div class="form-group">
+                            <label>Patrón de Usuario *</label>
+                            <select id="configPatronUsuario" onchange="previewUsuarioPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                                <option value="inicial_apellido_sufijo">Inicial + Apellido + Sufijo (ej: jperez.hca)</option>
+                                <option value="apellido_sufijo">Apellido + Sufijo (ej: perez.hca)</option>
+                                <option value="nombre_apellido_sufijo">Nombre + Apellido + Sufijo (ej: juan.perez.hca)</option>
+                                <option value="nombre_inicial_apellido">Nombre + Inicial Apellido (ej: juanp)</option>
+                                <option value="apellido_nombre">Apellido + Nombre (ej: perezjuan)</option>
+                                <option value="cedula">Cédula como usuario (ej: 12345678)</option>
+                                <option value="personalizado">Personalizado...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Sufijo (opcional)</label>
+                            <input type="text" id="configSufijoUsuario" placeholder="ej: hca, school, lab" value="hca" oninput="previewUsuarioPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                        </div>
+                        <div class="form-group">
+                            <label>Separador</label>
+                            <select id="configSeparadorUsuario" onchange="previewUsuarioPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                                <option value=".">Punto (.)</option>
+                                <option value="_">Guión bajo (_)</option>
+                                <option value="-">Guión (-)</option>
+                                <option value="">Sin separador</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Dominio de Email *</label>
+                            <input type="text" id="configDominioEmail" placeholder="ej: gmail.com, escuela.edu" value="gmail.com" oninput="previewUsuarioPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                        </div>
+                        <div style="background: white; border: 1.5px solid var(--gris-medio); border-radius: 6px; padding: 12px; margin-top: 8px;">
+                            <small style="color: #666;">Vista previa (ejemplo: Juan Pérez):</small>
+                            <div id="previewUsuario" style="font-weight: 600; font-size: 16px; margin-top: 4px; color: var(--azul-principal);">jperez.hca@gmail.com</div>
+                        </div>
+                    </div>
+
+                    <!-- Configuración de Contraseñas -->
+                    <div style="background: var(--gris-claro); border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="margin-bottom: 16px; color: var(--azul-principal);">Criterios para Contraseñas</h3>
+                        <div class="form-group">
+                            <label>Método de Contraseña *</label>
+                            <select id="configMetodoPassword" onchange="togglePasswordOptions(); previewPasswordPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                                <option value="segura">Contraseña segura aleatoria (8+ caracteres)</option>
+                                <option value="cedula">Cédula de identidad</option>
+                                <option value="cedula_sufijo">Cédula + Sufijo (ej: 12345678hca)</option>
+                                <option value="nombre_cedula">Nombre + últimos 4 dígitos cédula (ej: juan1234)</option>
+                                <option value="apellido_anio">Apellido + Año nacimiento (ej: perez1990)</option>
+                                <option value="patron_fijo">Patrón fijo para todos (ej: Lab2024!)</option>
+                                <option value="personalizado">Personalizado...</option>
+                            </select>
+                        </div>
+                        <div id="passwordSecureOptions" style="display: block;">
+                            <div class="form-group">
+                                <label>Longitud de contraseña</label>
+                                <input type="number" id="configPasswordLength" value="10" min="6" max="20" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px;">
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" id="configPasswordMayusculas" checked> Mayúsculas (A-Z)
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" id="configPasswordMinusculas" checked> Minúsculas (a-z)
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" id="configPasswordNumeros" checked> Números (0-9)
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" id="configPasswordSimbolos" checked> Símbolos (!@#$)
+                                </label>
+                            </div>
+                        </div>
+                        <div id="passwordSufijoOptions" style="display: none;">
+                            <div class="form-group">
+                                <label>Sufijo para contraseña</label>
+                                <input type="text" id="configSufijoPassword" placeholder="ej: hca, lab, 2024" value="hca" oninput="previewPasswordPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                            </div>
+                        </div>
+                        <div id="passwordFijoOptions" style="display: none;">
+                            <div class="form-group">
+                                <label>Contraseña fija para todos</label>
+                                <input type="text" id="configPasswordFijo" placeholder="ej: Lab2024!" oninput="previewPasswordPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                            </div>
+                        </div>
+                        <div style="background: white; border: 1.5px solid var(--gris-medio); border-radius: 6px; padding: 12px; margin-top: 8px;">
+                            <small style="color: #666;">Vista previa (ejemplo: Juan Pérez, cédula 12345678):</small>
+                            <div id="previewPassword" style="font-weight: 600; font-size: 16px; margin-top: 4px; color: var(--azul-principal);">Xk9#mL2pQr</div>
+                        </div>
+                    </div>
+
+                    <!-- Acciones -->
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px;">
+                        <button class="btn btn-primary" onclick="saveAccountConfig()">Guardar Configuración</button>
+                        <button class="btn btn-success" onclick="openCrearUsuariosMasivoModal()">Crear Usuarios Masivamente</button>
+                    </div>
+
+                    <!-- Tabla de usuarios creados con credenciales -->
+                    <div id="credencialesGeneradasContainer" style="display: none;">
+                        <h3 style="margin-bottom: 12px; color: var(--azul-principal);">Credenciales Generadas</h3>
+                        <div style="margin-bottom: 12px; display: flex; gap: 10px;">
+                            <button class="btn btn-primary" onclick="copiarCredenciales()">Copiar al Portapapeles</button>
+                            <button class="btn btn-primary" onclick="exportarCredencialesCSV()">Exportar CSV</button>
+                        </div>
+                        <div id="credencialesTable"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1697,6 +1833,187 @@
         </div>
     </div>
 
+    <!-- Modal: Nueva/Editar Clase -->
+    <div id="claseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="claseModalTitle">Nueva Clase</h2>
+            </div>
+            <form id="claseForm">
+                <input type="hidden" id="claseId">
+                <div class="form-group">
+                    <label>Nombre de la Clase *</label>
+                    <input type="text" id="claseNombre" placeholder="Ej: Física 3A, Química 2B" required>
+                </div>
+                <div class="form-group">
+                    <label>Código de Clase (Google Classroom) *</label>
+                    <input type="text" id="claseCodigo" placeholder="Ej: abc1234" required>
+                </div>
+                <div class="form-group">
+                    <label>Docente Asignado</label>
+                    <select id="claseDocente" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                        <option value="">Sin asignar</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="claseDescripcion" placeholder="Descripción opcional de la clase" rows="2"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn close-modal" onclick="closeClaseModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Importar Códigos de Clases -->
+    <div id="importarClasesModal" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <div class="modal-header">
+                <h2>Importar Códigos de Clase</h2>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="font-weight: 600; margin-bottom: 8px; display: block;">Modo de ingreso:</label>
+                <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                    <button type="button" class="btn btn-primary" id="btnModoPegar" onclick="setImportMode('pegar')" style="flex: 1;">Pegar Lista</button>
+                    <button type="button" class="btn close-modal" id="btnModoManual" onclick="setImportMode('manual')" style="flex: 1;">Uno a Uno</button>
+                </div>
+            </div>
+
+            <!-- Modo Pegar -->
+            <div id="importModoPegar">
+                <div class="form-group">
+                    <label>Pegue los códigos de clase (uno por línea o separados por coma)</label>
+                    <small style="color: #666; display: block; margin-bottom: 6px;">Formato: NombreClase, CódigoClase (o solo CódigoClase)</small>
+                    <textarea id="importClasesTexto" rows="10" placeholder="Física 3A, abc1234&#10;Química 2B, def5678&#10;&#10;O solo códigos:&#10;abc1234&#10;def5678" style="width: 100%; font-family: monospace; font-size: 13px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Asignar a Docente (opcional)</label>
+                    <select id="importClasesDocente" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                        <option value="">Sin asignar</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn close-modal" onclick="closeImportarClasesModal()">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="importarClasesPegar()">Importar Clases</button>
+                </div>
+            </div>
+
+            <!-- Modo Manual (Uno a Uno) -->
+            <div id="importModoManual" style="display: none;">
+                <div id="manualClasesList" style="max-height: 350px; overflow-y: auto; margin-bottom: 16px;">
+                    <div class="manual-clase-entry" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
+                        <input type="text" class="manual-clase-nombre" placeholder="Nombre de clase" style="flex: 2; padding: 8px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                        <input type="text" class="manual-clase-codigo" placeholder="Código" style="flex: 1; padding: 8px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                        <button type="button" class="btn close-modal" onclick="removeManualClaseEntry(this)" style="padding: 6px 10px; min-width: auto;">X</button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="addManualClaseEntry()" style="margin-bottom: 16px;">+ Agregar otra clase</button>
+                <div id="manualClaseVerification" style="display: none; background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                    <h4 style="margin-bottom: 8px; color: var(--azul-principal);">Verificación de datos</h4>
+                    <div id="manualClaseVerificationContent"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn close-modal" onclick="closeImportarClasesModal()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="verificarClasesManuales()">Verificar</button>
+                    <button type="button" class="btn btn-success" id="btnGuardarClasesManuales" onclick="guardarClasesManuales()" style="display: none;">Guardar Clases</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Asignar Clases Automáticamente -->
+    <div id="asignarClasesModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Asignar Clases Automáticamente</h2>
+            </div>
+            <p style="color: #666; margin-bottom: 16px;">Seleccione las clases y los docentes para asignar automáticamente.</p>
+            <div class="form-group">
+                <label>Modo de Asignación</label>
+                <select id="asignarClasesModo" onchange="toggleAsignarClasesOptions()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                    <option value="docente_a_clases">Asignar docente a múltiples clases</option>
+                    <option value="clase_a_docentes">Asignar clase a múltiples docentes</option>
+                    <option value="automatico">Auto-asignar todas las clases sin docente</option>
+                </select>
+            </div>
+            <div id="asignarDocenteAClases">
+                <div class="form-group">
+                    <label>Docente *</label>
+                    <select id="asignarDocente" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                        <option value="">Seleccione docente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Clases a asignar</label>
+                    <div id="asignarClasesCheckboxes" style="max-height: 200px; overflow-y: auto; border: 1.5px solid var(--gris-medio); border-radius: 6px; padding: 12px;"></div>
+                </div>
+            </div>
+            <div id="asignarClaseADocentes" style="display: none;">
+                <div class="form-group">
+                    <label>Clase *</label>
+                    <select id="asignarClase" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                        <option value="">Seleccione clase</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Docentes a asignar</label>
+                    <div id="asignarDocentesCheckboxes" style="max-height: 200px; overflow-y: auto; border: 1.5px solid var(--gris-medio); border-radius: 6px; padding: 12px;"></div>
+                </div>
+            </div>
+            <div id="asignarAutoInfo" style="display: none; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                <p style="color: #92400e; font-size: 14px;">Se asignarán las clases sin docente distribuyéndolas equitativamente entre los docentes disponibles.</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn close-modal" onclick="closeAsignarClasesModal()">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="ejecutarAsignacionClases()">Asignar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Crear Usuarios Masivamente -->
+    <div id="crearUsuariosMasivoModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>Crear Usuarios Masivamente</h2>
+            </div>
+            <p style="color: #666; margin-bottom: 16px;">Ingrese los datos de los usuarios. Las credenciales se generarán según la configuración actual.</p>
+            <div class="form-group">
+                <label>Datos de Usuarios (uno por línea)</label>
+                <small style="color: #666; display: block; margin-bottom: 6px;">Formato: Nombre Completo, Cédula (opcional), Año Nacimiento (opcional)</small>
+                <textarea id="masiveUserData" rows="10" placeholder="Juan Pérez, 12345678, 1990&#10;María García, 87654321, 1985&#10;Carlos López&#10;Ana Rodríguez, 11223344" style="width: 100%; font-family: monospace; font-size: 13px;"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Rol para todos *</label>
+                <select id="masiveUserRol" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                    <option value="Docente">Docente</option>
+                    <option value="Preparador">Preparador (Admin)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Laboratorios *</label>
+                <div style="display: flex; gap: 16px; margin-top: 8px;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="masiveUserLabSTEM" value="STEM" checked> STEM
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="masiveUserLabBio" value="Bio-Química"> Bio-Química
+                    </label>
+                </div>
+            </div>
+            <div id="masivePreview" style="display: none; background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 16px; max-height: 250px; overflow-y: auto;">
+                <h4 style="margin-bottom: 8px; color: var(--verde);">Vista previa de credenciales:</h4>
+                <div id="masivePreviewContent" style="font-family: monospace; font-size: 12px;"></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn close-modal" onclick="closeCrearUsuariosMasivoModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="previewMasiveUsers()">Vista Previa</button>
+                <button type="button" class="btn btn-success" id="btnCrearMasivo" onclick="crearUsuariosMasivo()" style="display: none;">Crear Usuarios</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: Categoría -->
     <div id="categoriaModal" class="modal">
         <div class="modal-content">
@@ -1732,6 +2049,8 @@
         let estadisticas = null;
         let altasBajas = [];
         let categorias = [];
+        let clases = [];
+        let accountConfig = {};
 
         // ==================== FUNCIONES DE CARGA ====================
 
@@ -1831,6 +2150,7 @@
             document.getElementById('prepararForm').addEventListener('submit', marcarPreparada);
             document.getElementById('usuarioForm').addEventListener('submit', saveUsuario);
             document.getElementById('passwordForm').addEventListener('submit', cambiarContrasena);
+            document.getElementById('claseForm').addEventListener('submit', saveClase);
         });
 
         // Auto-iniciar autenticación con Google
@@ -2006,6 +2326,8 @@
                 loadBitacora();
                 loadUsuarios();
                 loadAllSolicitudes();
+                loadClases();
+                loadAccountConfig();
             } else {
                 loadMisSolicitudes();
             }
@@ -2067,7 +2389,9 @@
                     { id: 'altasBajas', text: 'Altas y Bajas', view: 'altasBajasView' },
                     { id: 'bitacora', text: 'Bitácora', view: 'bitacoraView' },
                     { id: 'solicitudes', text: 'Solicitudes', view: 'gestionSolicitudesView' },
-                    { id: 'usuarios', text: 'Usuarios', view: 'usuariosView' }
+                    { id: 'clases', text: 'Clases', view: 'clasesView' },
+                    { id: 'usuarios', text: 'Usuarios', view: 'usuariosView' },
+                    { id: 'configCuentas', text: 'Config. Cuentas', view: 'configCuentasView' }
                 ];
             } else {
                 menuItems = [
@@ -2132,6 +2456,14 @@
                     if (typeof loadCategorias === 'function') {
                         loadCategorias();
                     }
+                    break;
+                case 'clasesView':
+                    console.log('→ Cargando clases');
+                    loadClases();
+                    break;
+                case 'configCuentasView':
+                    console.log('→ Cargando configuración de cuentas');
+                    loadAccountConfig();
                     break;
                 case 'gestionSolicitudesView':
                 case 'solicitudesDocenteView':
@@ -4538,6 +4870,774 @@
                     showNotification('Error: ' + error.message, 'error');
                 })
                 .deleteAltaBaja(id, currentLaboratorio);
+        }
+
+        // ==================== GESTIÓN DE CLASES ====================
+
+        function loadClases() {
+            google.script.run
+                .withSuccessHandler(function(data) {
+                    clases = data || [];
+                    displayClases(clases);
+                })
+                .withFailureHandler(function(error) {
+                    showNotification('Error al cargar clases: ' + error.message, 'error');
+                })
+                .getClases(currentLaboratorio);
+        }
+
+        function displayClases(items) {
+            const container = document.getElementById('clasesTable');
+            if (!items || items.length === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">No hay clases registradas. Agrega una nueva clase o importa códigos.</p>';
+                return;
+            }
+
+            let html = `<table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Código</th>
+                        <th>Docente</th>
+                        <th>Descripción</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            items.forEach(item => {
+                const docenteDisplay = item.docente || '<span style="color: #999;">Sin asignar</span>';
+                html += `<tr>
+                    <td><strong>${item.nombre}</strong></td>
+                    <td><code style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 14px;">${item.codigo}</code></td>
+                    <td>${docenteDisplay}</td>
+                    <td>${item.descripcion || '-'}</td>
+                    <td>
+                        <button class="action-btn edit" onclick='editClase(${JSON.stringify(item).replace(/'/g, "&#39;")})'>Editar</button>
+                        <button class="action-btn delete" onclick="deleteClase('${item.id}')">Eliminar</button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function filterClases() {
+            const search = document.getElementById('searchClases').value.toLowerCase();
+            const filtered = clases.filter(c =>
+                (c.nombre || '').toLowerCase().includes(search) ||
+                (c.codigo || '').toLowerCase().includes(search) ||
+                (c.docente || '').toLowerCase().includes(search)
+            );
+            displayClases(filtered);
+        }
+
+        function openAddClaseModal() {
+            document.getElementById('claseModalTitle').textContent = 'Nueva Clase';
+            document.getElementById('claseForm').reset();
+            document.getElementById('claseId').value = '';
+            populateDocenteSelect('claseDocente');
+            document.getElementById('claseModal').classList.add('active');
+        }
+
+        function editClase(clase) {
+            document.getElementById('claseModalTitle').textContent = 'Editar Clase';
+            document.getElementById('claseId').value = clase.id;
+            document.getElementById('claseNombre').value = clase.nombre;
+            document.getElementById('claseCodigo').value = clase.codigo;
+            document.getElementById('claseDescripcion').value = clase.descripcion || '';
+            populateDocenteSelect('claseDocente', clase.docente);
+            document.getElementById('claseModal').classList.add('active');
+        }
+
+        function closeClaseModal() {
+            document.getElementById('claseModal').classList.remove('active');
+        }
+
+        function saveClase(event) {
+            event.preventDefault();
+            const clase = {
+                id: document.getElementById('claseId').value,
+                nombre: document.getElementById('claseNombre').value,
+                codigo: document.getElementById('claseCodigo').value,
+                docente: document.getElementById('claseDocente').value,
+                descripcion: document.getElementById('claseDescripcion').value
+            };
+
+            showLoading('Guardando clase...');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification('Clase guardada correctamente');
+                        closeClaseModal();
+                        loadClases();
+                    } else {
+                        showNotification(result.error || 'Error al guardar clase', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .saveClase(clase, currentLaboratorio);
+        }
+
+        function deleteClase(id) {
+            if (!confirm('¿Está seguro de eliminar esta clase?')) return;
+            showLoading();
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification('Clase eliminada correctamente');
+                        loadClases();
+                    } else {
+                        showNotification('Error al eliminar clase', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .deleteClase(id, currentLaboratorio);
+        }
+
+        function exportClases() {
+            if (!clases || clases.length === 0) {
+                showNotification('No hay clases para exportar', 'error');
+                return;
+            }
+            let csv = 'Nombre,Código,Docente,Descripción\n';
+            clases.forEach(c => {
+                csv += `"${c.nombre}","${c.codigo}","${c.docente || ''}","${c.descripcion || ''}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'clases_' + currentLaboratorio + '.csv';
+            link.click();
+            showNotification('Clases exportadas correctamente');
+        }
+
+        // Importar Clases
+        let importMode = 'pegar';
+
+        function openImportarClasesModal() {
+            setImportMode('pegar');
+            document.getElementById('importClasesTexto').value = '';
+            populateDocenteSelect('importClasesDocente');
+            document.getElementById('importarClasesModal').classList.add('active');
+        }
+
+        function closeImportarClasesModal() {
+            document.getElementById('importarClasesModal').classList.remove('active');
+        }
+
+        function setImportMode(mode) {
+            importMode = mode;
+            if (mode === 'pegar') {
+                document.getElementById('importModoPegar').style.display = 'block';
+                document.getElementById('importModoManual').style.display = 'none';
+                document.getElementById('btnModoPegar').className = 'btn btn-primary';
+                document.getElementById('btnModoManual').className = 'btn close-modal';
+            } else {
+                document.getElementById('importModoPegar').style.display = 'none';
+                document.getElementById('importModoManual').style.display = 'block';
+                document.getElementById('btnModoPegar').className = 'btn close-modal';
+                document.getElementById('btnModoManual').className = 'btn btn-primary';
+            }
+        }
+
+        function importarClasesPegar() {
+            const texto = document.getElementById('importClasesTexto').value.trim();
+            if (!texto) {
+                showNotification('Ingrese al menos un código de clase', 'error');
+                return;
+            }
+
+            const docente = document.getElementById('importClasesDocente').value;
+            const lineas = texto.split('\n').filter(l => l.trim());
+            const clasesParaImportar = [];
+
+            lineas.forEach((linea, idx) => {
+                const partes = linea.split(',').map(p => p.trim());
+                if (partes.length >= 2) {
+                    clasesParaImportar.push({
+                        nombre: partes[0],
+                        codigo: partes[1],
+                        docente: docente,
+                        descripcion: ''
+                    });
+                } else if (partes.length === 1 && partes[0]) {
+                    clasesParaImportar.push({
+                        nombre: 'Clase ' + (idx + 1),
+                        codigo: partes[0],
+                        docente: docente,
+                        descripcion: ''
+                    });
+                }
+            });
+
+            if (clasesParaImportar.length === 0) {
+                showNotification('No se encontraron códigos válidos', 'error');
+                return;
+            }
+
+            showLoading('Importando ' + clasesParaImportar.length + ' clases...');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification(result.count + ' clases importadas correctamente');
+                        closeImportarClasesModal();
+                        loadClases();
+                    } else {
+                        showNotification(result.error || 'Error al importar clases', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .importarClases(clasesParaImportar, currentLaboratorio);
+        }
+
+        function addManualClaseEntry() {
+            const container = document.getElementById('manualClasesList');
+            const entry = document.createElement('div');
+            entry.className = 'manual-clase-entry';
+            entry.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
+            entry.innerHTML = `
+                <input type="text" class="manual-clase-nombre" placeholder="Nombre de clase" style="flex: 2; padding: 8px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                <input type="text" class="manual-clase-codigo" placeholder="Código" style="flex: 1; padding: 8px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                <button type="button" class="btn close-modal" onclick="removeManualClaseEntry(this)" style="padding: 6px 10px; min-width: auto;">X</button>
+            `;
+            container.appendChild(entry);
+        }
+
+        function removeManualClaseEntry(btn) {
+            const entries = document.querySelectorAll('.manual-clase-entry');
+            if (entries.length > 1) {
+                btn.parentElement.remove();
+            }
+        }
+
+        function verificarClasesManuales() {
+            const entries = document.querySelectorAll('.manual-clase-entry');
+            const clasesVerificadas = [];
+            let valid = true;
+
+            entries.forEach((entry, idx) => {
+                const nombre = entry.querySelector('.manual-clase-nombre').value.trim();
+                const codigo = entry.querySelector('.manual-clase-codigo').value.trim();
+                if (codigo) {
+                    const duplicado = clases.find(c => c.codigo === codigo);
+                    clasesVerificadas.push({
+                        nombre: nombre || 'Clase ' + (idx + 1),
+                        codigo: codigo,
+                        duplicado: !!duplicado
+                    });
+                }
+            });
+
+            if (clasesVerificadas.length === 0) {
+                showNotification('Ingrese al menos un código de clase', 'error');
+                return;
+            }
+
+            let html = '<table style="width: 100%; font-size: 13px;"><thead><tr><th>Nombre</th><th>Código</th><th>Estado</th></tr></thead><tbody>';
+            clasesVerificadas.forEach(c => {
+                const estado = c.duplicado
+                    ? '<span style="color: #ef4444; font-weight: 600;">Ya existe</span>'
+                    : '<span style="color: #10b981; font-weight: 600;">OK</span>';
+                html += `<tr><td>${c.nombre}</td><td><code>${c.codigo}</code></td><td>${estado}</td></tr>`;
+            });
+            html += '</tbody></table>';
+
+            document.getElementById('manualClaseVerificationContent').innerHTML = html;
+            document.getElementById('manualClaseVerification').style.display = 'block';
+            document.getElementById('btnGuardarClasesManuales').style.display = 'inline-block';
+        }
+
+        function guardarClasesManuales() {
+            const entries = document.querySelectorAll('.manual-clase-entry');
+            const clasesParaGuardar = [];
+
+            entries.forEach((entry, idx) => {
+                const nombre = entry.querySelector('.manual-clase-nombre').value.trim();
+                const codigo = entry.querySelector('.manual-clase-codigo').value.trim();
+                if (codigo) {
+                    clasesParaGuardar.push({
+                        nombre: nombre || 'Clase ' + (idx + 1),
+                        codigo: codigo,
+                        docente: '',
+                        descripcion: ''
+                    });
+                }
+            });
+
+            if (clasesParaGuardar.length === 0) {
+                showNotification('No hay clases para guardar', 'error');
+                return;
+            }
+
+            showLoading('Guardando ' + clasesParaGuardar.length + ' clases...');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification(result.count + ' clases guardadas correctamente');
+                        closeImportarClasesModal();
+                        loadClases();
+                    } else {
+                        showNotification(result.error || 'Error al guardar clases', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .importarClases(clasesParaGuardar, currentLaboratorio);
+        }
+
+        // Asignar Clases
+        function openAsignarClasesModal() {
+            populateDocenteSelect('asignarDocente');
+            populateAsignarClasesCheckboxes();
+            populateAsignarDocentesCheckboxes();
+            populateClaseSelect('asignarClase');
+            toggleAsignarClasesOptions();
+            document.getElementById('asignarClasesModal').classList.add('active');
+        }
+
+        function closeAsignarClasesModal() {
+            document.getElementById('asignarClasesModal').classList.remove('active');
+        }
+
+        function toggleAsignarClasesOptions() {
+            const modo = document.getElementById('asignarClasesModo').value;
+            document.getElementById('asignarDocenteAClases').style.display = modo === 'docente_a_clases' ? 'block' : 'none';
+            document.getElementById('asignarClaseADocentes').style.display = modo === 'clase_a_docentes' ? 'block' : 'none';
+            document.getElementById('asignarAutoInfo').style.display = modo === 'automatico' ? 'block' : 'none';
+        }
+
+        function populateDocenteSelect(selectId, selectedValue) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Sin asignar</option>';
+            const docentes = usuarios.filter(u => u.rol === 'Docente');
+            docentes.forEach(d => {
+                const selected = selectedValue === d.nombre ? ' selected' : '';
+                select.innerHTML += `<option value="${d.nombre}"${selected}>${d.nombre}</option>`;
+            });
+        }
+
+        function populateClaseSelect(selectId) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Seleccione clase</option>';
+            clases.forEach(c => {
+                select.innerHTML += `<option value="${c.id}">${c.nombre} (${c.codigo})</option>`;
+            });
+        }
+
+        function populateAsignarClasesCheckboxes() {
+            const container = document.getElementById('asignarClasesCheckboxes');
+            if (!clases || clases.length === 0) {
+                container.innerHTML = '<p style="color: #999; font-size: 13px;">No hay clases disponibles</p>';
+                return;
+            }
+            let html = '';
+            clases.forEach(c => {
+                const docenteInfo = c.docente ? ` (${c.docente})` : ' (sin asignar)';
+                html += `<label style="display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer;">
+                    <input type="checkbox" value="${c.id}" class="asignar-clase-cb">
+                    <span>${c.nombre} - <code>${c.codigo}</code>${docenteInfo}</span>
+                </label>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function populateAsignarDocentesCheckboxes() {
+            const container = document.getElementById('asignarDocentesCheckboxes');
+            const docentes = usuarios.filter(u => u.rol === 'Docente');
+            if (docentes.length === 0) {
+                container.innerHTML = '<p style="color: #999; font-size: 13px;">No hay docentes disponibles</p>';
+                return;
+            }
+            let html = '';
+            docentes.forEach(d => {
+                html += `<label style="display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer;">
+                    <input type="checkbox" value="${d.nombre}" class="asignar-docente-cb">
+                    <span>${d.nombre}</span>
+                </label>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function ejecutarAsignacionClases() {
+            const modo = document.getElementById('asignarClasesModo').value;
+            let asignaciones = [];
+
+            if (modo === 'docente_a_clases') {
+                const docente = document.getElementById('asignarDocente').value;
+                if (!docente) {
+                    showNotification('Seleccione un docente', 'error');
+                    return;
+                }
+                const clasesSeleccionadas = Array.from(document.querySelectorAll('.asignar-clase-cb:checked')).map(cb => cb.value);
+                if (clasesSeleccionadas.length === 0) {
+                    showNotification('Seleccione al menos una clase', 'error');
+                    return;
+                }
+                clasesSeleccionadas.forEach(claseId => {
+                    asignaciones.push({ claseId: claseId, docente: docente });
+                });
+            } else if (modo === 'clase_a_docentes') {
+                const claseId = document.getElementById('asignarClase').value;
+                if (!claseId) {
+                    showNotification('Seleccione una clase', 'error');
+                    return;
+                }
+                const docentesSeleccionados = Array.from(document.querySelectorAll('.asignar-docente-cb:checked')).map(cb => cb.value);
+                if (docentesSeleccionados.length === 0) {
+                    showNotification('Seleccione al menos un docente', 'error');
+                    return;
+                }
+                // Para clase_a_docentes, el último docente seleccionado se asigna
+                asignaciones.push({ claseId: claseId, docente: docentesSeleccionados[docentesSeleccionados.length - 1] });
+            } else if (modo === 'automatico') {
+                const sinDocente = clases.filter(c => !c.docente);
+                const docentes = usuarios.filter(u => u.rol === 'Docente');
+                if (sinDocente.length === 0) {
+                    showNotification('Todas las clases ya tienen docente asignado', 'info');
+                    return;
+                }
+                if (docentes.length === 0) {
+                    showNotification('No hay docentes disponibles', 'error');
+                    return;
+                }
+                sinDocente.forEach((clase, idx) => {
+                    const docente = docentes[idx % docentes.length];
+                    asignaciones.push({ claseId: clase.id, docente: docente.nombre });
+                });
+            }
+
+            showLoading('Asignando clases...');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification(result.count + ' asignaciones realizadas correctamente');
+                        closeAsignarClasesModal();
+                        loadClases();
+                    } else {
+                        showNotification(result.error || 'Error al asignar clases', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .asignarClases(asignaciones, currentLaboratorio);
+        }
+
+        // ==================== CONFIGURACIÓN DE CUENTAS ====================
+
+        function loadAccountConfig() {
+            google.script.run
+                .withSuccessHandler(function(config) {
+                    accountConfig = config || {};
+                    applyAccountConfig(accountConfig);
+                })
+                .withFailureHandler(function(error) {
+                    console.log('No se pudo cargar configuración de cuentas, usando defaults');
+                })
+                .getAccountConfig();
+        }
+
+        function applyAccountConfig(config) {
+            if (config.patronUsuario) document.getElementById('configPatronUsuario').value = config.patronUsuario;
+            if (config.sufijoUsuario) document.getElementById('configSufijoUsuario').value = config.sufijoUsuario;
+            if (config.separadorUsuario) document.getElementById('configSeparadorUsuario').value = config.separadorUsuario;
+            if (config.dominioEmail) document.getElementById('configDominioEmail').value = config.dominioEmail;
+            if (config.metodoPassword) document.getElementById('configMetodoPassword').value = config.metodoPassword;
+            if (config.passwordLength) document.getElementById('configPasswordLength').value = config.passwordLength;
+            if (config.sufijoPassword) document.getElementById('configSufijoPassword').value = config.sufijoPassword;
+            if (config.passwordFijo) document.getElementById('configPasswordFijo').value = config.passwordFijo;
+            togglePasswordOptions();
+            previewUsuarioPattern();
+            previewPasswordPattern();
+        }
+
+        function saveAccountConfig() {
+            const config = {
+                patronUsuario: document.getElementById('configPatronUsuario').value,
+                sufijoUsuario: document.getElementById('configSufijoUsuario').value,
+                separadorUsuario: document.getElementById('configSeparadorUsuario').value,
+                dominioEmail: document.getElementById('configDominioEmail').value,
+                metodoPassword: document.getElementById('configMetodoPassword').value,
+                passwordLength: document.getElementById('configPasswordLength').value,
+                sufijoPassword: document.getElementById('configSufijoPassword').value,
+                passwordFijo: document.getElementById('configPasswordFijo').value
+            };
+
+            showLoading('Guardando configuración...');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        accountConfig = config;
+                        showNotification('Configuración guardada correctamente');
+                    } else {
+                        showNotification(result.error || 'Error al guardar', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .saveAccountConfig(config);
+        }
+
+        function togglePasswordOptions() {
+            const metodo = document.getElementById('configMetodoPassword').value;
+            document.getElementById('passwordSecureOptions').style.display = metodo === 'segura' ? 'block' : 'none';
+            document.getElementById('passwordSufijoOptions').style.display =
+                (metodo === 'cedula_sufijo' || metodo === 'nombre_cedula' || metodo === 'apellido_anio') ? 'block' : 'none';
+            document.getElementById('passwordFijoOptions').style.display = metodo === 'patron_fijo' ? 'block' : 'none';
+        }
+
+        function normalizeText(text) {
+            return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '');
+        }
+
+        function generateUsername(nombre, cedula) {
+            const patron = document.getElementById('configPatronUsuario').value;
+            const sufijo = document.getElementById('configSufijoUsuario').value;
+            const separador = document.getElementById('configSeparadorUsuario').value;
+            const dominio = document.getElementById('configDominioEmail').value;
+
+            const partes = nombre.trim().split(/\s+/);
+            const primerNombre = normalizeText(partes[0] || '');
+            const apellido = normalizeText(partes.length > 1 ? partes[partes.length - 1] : partes[0]);
+            const inicialNombre = primerNombre.charAt(0);
+
+            let usuario = '';
+            switch (patron) {
+                case 'inicial_apellido_sufijo':
+                    usuario = sufijo ? inicialNombre + apellido + separador + sufijo : inicialNombre + apellido;
+                    break;
+                case 'apellido_sufijo':
+                    usuario = sufijo ? apellido + separador + sufijo : apellido;
+                    break;
+                case 'nombre_apellido_sufijo':
+                    usuario = sufijo ? primerNombre + separador + apellido + separador + sufijo : primerNombre + separador + apellido;
+                    break;
+                case 'nombre_inicial_apellido':
+                    usuario = primerNombre + apellido.charAt(0);
+                    break;
+                case 'apellido_nombre':
+                    usuario = apellido + primerNombre;
+                    break;
+                case 'cedula':
+                    usuario = cedula || '00000000';
+                    break;
+                default:
+                    usuario = inicialNombre + apellido;
+            }
+            return usuario + '@' + dominio;
+        }
+
+        function generatePassword(nombre, cedula, anio) {
+            const metodo = document.getElementById('configMetodoPassword').value;
+
+            switch (metodo) {
+                case 'segura': {
+                    const length = parseInt(document.getElementById('configPasswordLength').value) || 10;
+                    let chars = '';
+                    if (document.getElementById('configPasswordMayusculas').checked) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    if (document.getElementById('configPasswordMinusculas').checked) chars += 'abcdefghijklmnopqrstuvwxyz';
+                    if (document.getElementById('configPasswordNumeros').checked) chars += '0123456789';
+                    if (document.getElementById('configPasswordSimbolos').checked) chars += '!@#$%&*';
+                    if (!chars) chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                    let pwd = '';
+                    for (let i = 0; i < length; i++) {
+                        pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+                    }
+                    return pwd;
+                }
+                case 'cedula':
+                    return cedula || '000000';
+                case 'cedula_sufijo': {
+                    const sufijo = document.getElementById('configSufijoPassword').value;
+                    return (cedula || '000000') + sufijo;
+                }
+                case 'nombre_cedula': {
+                    const primerNombre = normalizeText(nombre.trim().split(/\s+/)[0] || '');
+                    const ultimos4 = (cedula || '0000').slice(-4);
+                    return primerNombre + ultimos4;
+                }
+                case 'apellido_anio': {
+                    const partes = nombre.trim().split(/\s+/);
+                    const apellido = normalizeText(partes.length > 1 ? partes[partes.length - 1] : partes[0]);
+                    return apellido + (anio || '2000');
+                }
+                case 'patron_fijo':
+                    return document.getElementById('configPasswordFijo').value || 'Lab2024!';
+                default:
+                    return 'Pass' + Math.floor(Math.random() * 10000);
+            }
+        }
+
+        function previewUsuarioPattern() {
+            const preview = generateUsername('Juan Pérez', '12345678');
+            document.getElementById('previewUsuario').textContent = preview;
+        }
+
+        function previewPasswordPattern() {
+            const preview = generatePassword('Juan Pérez', '12345678', '1990');
+            document.getElementById('previewPassword').textContent = preview;
+        }
+
+        // Creación masiva de usuarios
+        function openCrearUsuariosMasivoModal() {
+            document.getElementById('masiveUserData').value = '';
+            document.getElementById('masivePreview').style.display = 'none';
+            document.getElementById('btnCrearMasivo').style.display = 'none';
+            document.getElementById('crearUsuariosMasivoModal').classList.add('active');
+        }
+
+        function closeCrearUsuariosMasivoModal() {
+            document.getElementById('crearUsuariosMasivoModal').classList.remove('active');
+        }
+
+        function parseMasiveUserData() {
+            const texto = document.getElementById('masiveUserData').value.trim();
+            if (!texto) return [];
+
+            const lineas = texto.split('\n').filter(l => l.trim());
+            return lineas.map(linea => {
+                const partes = linea.split(',').map(p => p.trim());
+                return {
+                    nombre: partes[0] || '',
+                    cedula: partes[1] || '',
+                    anio: partes[2] || ''
+                };
+            }).filter(u => u.nombre);
+        }
+
+        function previewMasiveUsers() {
+            const datos = parseMasiveUserData();
+            if (datos.length === 0) {
+                showNotification('Ingrese al menos un usuario', 'error');
+                return;
+            }
+
+            let html = '<table style="width: 100%; font-size: 12px;"><thead><tr><th>Nombre</th><th>Email</th><th>Contraseña</th></tr></thead><tbody>';
+            datos.forEach(d => {
+                const email = generateUsername(d.nombre, d.cedula);
+                const password = generatePassword(d.nombre, d.cedula, d.anio);
+                html += `<tr><td>${d.nombre}</td><td>${email}</td><td><code>${password}</code></td></tr>`;
+            });
+            html += '</tbody></table>';
+
+            document.getElementById('masivePreviewContent').innerHTML = html;
+            document.getElementById('masivePreview').style.display = 'block';
+            document.getElementById('btnCrearMasivo').style.display = 'inline-block';
+        }
+
+        function crearUsuariosMasivo() {
+            const datos = parseMasiveUserData();
+            if (datos.length === 0) return;
+
+            const rol = document.getElementById('masiveUserRol').value;
+            const labs = [];
+            if (document.getElementById('masiveUserLabSTEM').checked) labs.push('STEM');
+            if (document.getElementById('masiveUserLabBio').checked) labs.push('Bio-Química');
+
+            if (labs.length === 0) {
+                showNotification('Seleccione al menos un laboratorio', 'error');
+                return;
+            }
+
+            const usuariosParaCrear = datos.map(d => ({
+                nombre: d.nombre,
+                email: generateUsername(d.nombre, d.cedula),
+                password: generatePassword(d.nombre, d.cedula, d.anio),
+                rol: rol,
+                laboratorio: labs.join(',')
+            }));
+
+            showLoading('Creando ' + usuariosParaCrear.length + ' usuarios...');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showNotification(result.count + ' usuarios creados, ' + (result.skipped || 0) + ' omitidos (duplicados)');
+                        closeCrearUsuariosMasivoModal();
+                        loadUsuarios();
+                        // Mostrar credenciales generadas
+                        mostrarCredencialesGeneradas(result.credenciales || usuariosParaCrear);
+                    } else {
+                        showNotification(result.error || 'Error al crear usuarios', 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showNotification('Error: ' + error.message, 'error');
+                })
+                .crearUsuariosMasivo(usuariosParaCrear);
+        }
+
+        function mostrarCredencialesGeneradas(credenciales) {
+            if (!credenciales || credenciales.length === 0) return;
+
+            let html = '<table style="width: 100%; font-size: 13px;"><thead><tr><th>Nombre</th><th>Email</th><th>Contraseña</th><th>Rol</th></tr></thead><tbody>';
+            credenciales.forEach(c => {
+                html += `<tr><td>${c.nombre}</td><td>${c.email}</td><td><code>${c.password}</code></td><td>${c.rol}</td></tr>`;
+            });
+            html += '</tbody></table>';
+
+            document.getElementById('credencialesTable').innerHTML = html;
+            document.getElementById('credencialesGeneradasContainer').style.display = 'block';
+
+            // Guardar referencia para copiar/exportar
+            window.lastCredenciales = credenciales;
+        }
+
+        function copiarCredenciales() {
+            if (!window.lastCredenciales) return;
+            let texto = 'Nombre\tEmail\tContraseña\tRol\n';
+            window.lastCredenciales.forEach(c => {
+                texto += `${c.nombre}\t${c.email}\t${c.password}\t${c.rol}\n`;
+            });
+            navigator.clipboard.writeText(texto).then(() => {
+                showNotification('Credenciales copiadas al portapapeles');
+            }).catch(() => {
+                // Fallback
+                const ta = document.createElement('textarea');
+                ta.value = texto;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showNotification('Credenciales copiadas al portapapeles');
+            });
+        }
+
+        function exportarCredencialesCSV() {
+            if (!window.lastCredenciales) return;
+            let csv = 'Nombre,Email,Contraseña,Rol\n';
+            window.lastCredenciales.forEach(c => {
+                csv += `"${c.nombre}","${c.email}","${c.password}","${c.rol}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'credenciales_generadas.csv';
+            link.click();
+            showNotification('CSV exportado');
         }
     </script>
 </body>
