@@ -2007,8 +2007,11 @@ function saveUsuario(usuario) {
     if (!usuario.email || usuario.email.trim() === '') {
       return { success: false, error: 'El email es requerido' };
     }
-    if (!usuario.password || usuario.password.length < 6) {
-      return { success: false, error: 'La contraseña debe tener al menos 6 caracteres' };
+    if (!usuario.password || usuario.password.length < 8) {
+      return { success: false, error: 'La contraseña debe tener al menos 8 caracteres' };
+    }
+    if (!/[A-Z]/.test(usuario.password) || !/[a-z]/.test(usuario.password) || !/[0-9]/.test(usuario.password)) {
+      return { success: false, error: 'La contraseña debe tener al menos una mayúscula, una minúscula y un número' };
     }
     if (!usuario.rol || (usuario.rol !== 'Preparador' && usuario.rol !== 'Docente')) {
       return { success: false, error: 'El rol debe ser Preparador o Docente' };

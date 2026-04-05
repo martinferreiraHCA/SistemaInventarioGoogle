@@ -1391,9 +1391,9 @@
                         <div class="form-group">
                             <label>Patrón de Usuario *</label>
                             <select id="configPatronUsuario" onchange="previewUsuarioPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
-                                <option value="inicial_apellido_sufijo">Inicial + Apellido + Sufijo (ej: jperez.hca)</option>
-                                <option value="apellido_sufijo">Apellido + Sufijo (ej: perez.hca)</option>
-                                <option value="nombre_apellido_sufijo">Nombre + Apellido + Sufijo (ej: juan.perez.hca)</option>
+                                <option value="inicial_apellido_sufijo">Inicial + Apellido + Sufijo (ej: jperezhca)</option>
+                                <option value="apellido_sufijo">Apellido + Sufijo (ej: perezhca)</option>
+                                <option value="nombre_apellido_sufijo">Nombre + Apellido + Sufijo (ej: juanperezhca)</option>
                                 <option value="nombre_inicial_apellido">Nombre + Inicial Apellido (ej: juanp)</option>
                                 <option value="apellido_nombre">Apellido + Nombre (ej: perezjuan)</option>
                                 <option value="cedula">Cédula como usuario (ej: 12345678)</option>
@@ -1404,22 +1404,15 @@
                             <label>Sufijo (opcional)</label>
                             <input type="text" id="configSufijoUsuario" placeholder="ej: hca, school, lab" value="hca" oninput="previewUsuarioPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
                         </div>
-                        <div class="form-group">
-                            <label>Separador</label>
-                            <select id="configSeparadorUsuario" onchange="previewUsuarioPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
-                                <option value=".">Punto (.)</option>
-                                <option value="_">Guión bajo (_)</option>
-                                <option value="-">Guión (-)</option>
-                                <option value="">Sin separador</option>
-                            </select>
-                        </div>
+                        <input type="hidden" id="configSeparadorUsuario" value="">
+                        <p style="font-size: 12px; color: #888; margin-top: 4px;">Los nombres de usuario solo contienen letras y números (sin caracteres especiales).</p>
                         <div class="form-group">
                             <label>Dominio de Email *</label>
                             <input type="text" id="configDominioEmail" placeholder="ej: gmail.com, escuela.edu" value="gmail.com" oninput="previewUsuarioPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
                         </div>
                         <div style="background: white; border: 1.5px solid var(--gris-medio); border-radius: 6px; padding: 12px; margin-top: 8px;">
                             <small style="color: #666;">Vista previa (ejemplo: Juan Pérez):</small>
-                            <div id="previewUsuario" style="font-weight: 600; font-size: 16px; margin-top: 4px; color: var(--azul-principal);">jperez.hca@gmail.com</div>
+                            <div id="previewUsuario" style="font-weight: 600; font-size: 16px; margin-top: 4px; color: var(--azul-principal);">jperezhca@gmail.com</div>
                         </div>
                     </div>
 
@@ -1429,7 +1422,7 @@
                         <div class="form-group">
                             <label>Método de Contraseña *</label>
                             <select id="configMetodoPassword" onchange="togglePasswordOptions(); previewPasswordPattern()" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
-                                <option value="segura">Contraseña segura aleatoria (8+ caracteres)</option>
+                                <option value="segura">Contraseña segura aleatoria (mín. 8 caracteres, mayúsc+minúsc+número)</option>
                                 <option value="cedula">Cédula de identidad</option>
                                 <option value="cedula_sufijo">Cédula + Sufijo (ej: 12345678hca)</option>
                                 <option value="nombre_cedula">Nombre + últimos 4 dígitos cédula (ej: juan1234)</option>
@@ -1441,7 +1434,7 @@
                         <div id="passwordSecureOptions" style="display: block;">
                             <div class="form-group">
                                 <label>Longitud de contraseña</label>
-                                <input type="number" id="configPasswordLength" value="10" min="6" max="20" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
+                                <input type="number" id="configPasswordLength" value="10" min="8" max="20" style="width: 100%; padding: 10px; border: 1.5px solid var(--gris-medio); border-radius: 6px;">
                             </div>
                             <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px;">
                                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
@@ -1472,7 +1465,8 @@
                         </div>
                         <div style="background: white; border: 1.5px solid var(--gris-medio); border-radius: 6px; padding: 12px; margin-top: 8px;">
                             <small style="color: #666;">Vista previa (ejemplo: Juan Pérez, cédula 12345678):</small>
-                            <div id="previewPassword" style="font-weight: 600; font-size: 16px; margin-top: 4px; color: var(--azul-principal);">Xk9#mL2pQr</div>
+                            <small style="color: #d97706; display: block; margin-top: 2px;">Requisitos: mín. 8 caracteres, al menos 1 mayúscula, 1 minúscula y 1 número</small>
+                            <div id="previewPassword" style="font-weight: 600; font-size: 16px; margin-top: 4px; color: var(--azul-principal);">Xk9mL2pQr1</div>
                         </div>
                     </div>
 
@@ -1785,11 +1779,11 @@
                 </div>
                 <div class="form-group">
                     <label>Nueva Contraseña *</label>
-                    <input type="password" id="newPassword" minlength="6" required>
+                    <input type="password" id="newPassword" minlength="8" required>
                 </div>
                 <div class="form-group">
                     <label>Confirmar Nueva Contraseña *</label>
-                    <input type="password" id="confirmPassword" minlength="6" required>
+                    <input type="password" id="confirmPassword" minlength="8" required>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn close-modal" onclick="closePasswordModal()">Cancelar</button>
@@ -4562,8 +4556,12 @@
                 return;
             }
 
-            if (newPassword.length < 6) {
-                showNotification('La nueva contraseña debe tener al menos 6 caracteres', 'error');
+            if (newPassword.length < 8) {
+                showNotification('La nueva contraseña debe tener al menos 8 caracteres', 'error');
+                return;
+            }
+            if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+                showNotification('La contraseña debe tener al menos una mayúscula, una minúscula y un número', 'error');
                 return;
             }
 
@@ -5415,7 +5413,6 @@
         function generateUsername(nombre, cedula) {
             const patron = document.getElementById('configPatronUsuario').value;
             const sufijo = document.getElementById('configSufijoUsuario').value;
-            const separador = document.getElementById('configSeparadorUsuario').value;
             const dominio = document.getElementById('configDominioEmail').value;
 
             const partes = nombre.trim().split(/\s+/);
@@ -5426,13 +5423,13 @@
             let usuario = '';
             switch (patron) {
                 case 'inicial_apellido_sufijo':
-                    usuario = sufijo ? inicialNombre + apellido + separador + sufijo : inicialNombre + apellido;
+                    usuario = inicialNombre + apellido + (sufijo || '');
                     break;
                 case 'apellido_sufijo':
-                    usuario = sufijo ? apellido + separador + sufijo : apellido;
+                    usuario = apellido + (sufijo || '');
                     break;
                 case 'nombre_apellido_sufijo':
-                    usuario = sufijo ? primerNombre + separador + apellido + separador + sufijo : primerNombre + separador + apellido;
+                    usuario = primerNombre + apellido + (sufijo || '');
                     break;
                 case 'nombre_inicial_apellido':
                     usuario = primerNombre + apellido.charAt(0);
@@ -5446,47 +5443,86 @@
                 default:
                     usuario = inicialNombre + apellido;
             }
+            // Solo letras y números en el nombre de usuario
+            usuario = usuario.replace(/[^a-z0-9]/gi, '').toLowerCase();
             return usuario + '@' + dominio;
+        }
+
+        // Garantiza que la contraseña cumpla: min 8 chars, al menos 1 mayúscula, 1 minúscula, 1 número
+        function enforcePasswordPolicy(pwd) {
+            pwd = String(pwd);
+            // Asegurar mínimo 8 caracteres
+            while (pwd.length < 8) pwd += Math.floor(Math.random() * 10);
+            // Verificar requisitos
+            const hasUpper = /[A-Z]/.test(pwd);
+            const hasLower = /[a-z]/.test(pwd);
+            const hasNumber = /[0-9]/.test(pwd);
+            // Agregar lo que falte al final
+            if (!hasUpper) pwd = pwd.slice(0, -1) + 'A' + pwd.slice(-1);
+            if (!hasLower) pwd = pwd.slice(0, -1) + 'a' + pwd.slice(-1);
+            if (!hasNumber) pwd = pwd.slice(0, -1) + '1' + pwd.slice(-1);
+            // Re-verificar longitud mínima tras los ajustes
+            while (pwd.length < 8) pwd += Math.floor(Math.random() * 10);
+            return pwd;
         }
 
         function generatePassword(nombre, cedula, anio) {
             const metodo = document.getElementById('configMetodoPassword').value;
+            let pwd = '';
 
             switch (metodo) {
                 case 'segura': {
-                    const length = parseInt(document.getElementById('configPasswordLength').value) || 10;
+                    const length = Math.max(8, parseInt(document.getElementById('configPasswordLength').value) || 10);
+                    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    const lower = 'abcdefghijklmnopqrstuvwxyz';
+                    const nums = '0123456789';
+                    const symbols = '!@#$%&*';
                     let chars = '';
-                    if (document.getElementById('configPasswordMayusculas').checked) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                    if (document.getElementById('configPasswordMinusculas').checked) chars += 'abcdefghijklmnopqrstuvwxyz';
-                    if (document.getElementById('configPasswordNumeros').checked) chars += '0123456789';
-                    if (document.getElementById('configPasswordSimbolos').checked) chars += '!@#$%&*';
-                    if (!chars) chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-                    let pwd = '';
-                    for (let i = 0; i < length; i++) {
+                    if (document.getElementById('configPasswordMayusculas').checked) chars += upper;
+                    if (document.getElementById('configPasswordMinusculas').checked) chars += lower;
+                    if (document.getElementById('configPasswordNumeros').checked) chars += nums;
+                    if (document.getElementById('configPasswordSimbolos').checked) chars += symbols;
+                    if (!chars) chars = lower + nums;
+                    // Garantizar al menos 1 mayúscula, 1 minúscula, 1 número
+                    pwd = upper.charAt(Math.floor(Math.random() * upper.length))
+                        + lower.charAt(Math.floor(Math.random() * lower.length))
+                        + nums.charAt(Math.floor(Math.random() * nums.length));
+                    for (let i = 3; i < length; i++) {
                         pwd += chars.charAt(Math.floor(Math.random() * chars.length));
                     }
+                    // Mezclar caracteres
+                    pwd = pwd.split('').sort(() => Math.random() - 0.5).join('');
                     return pwd;
                 }
                 case 'cedula':
-                    return cedula || '000000';
+                    pwd = cedula || '00000000';
+                    return enforcePasswordPolicy(pwd);
                 case 'cedula_sufijo': {
                     const sufijo = document.getElementById('configSufijoPassword').value;
-                    return (cedula || '000000') + sufijo;
+                    pwd = (cedula || '00000000') + sufijo;
+                    return enforcePasswordPolicy(pwd);
                 }
                 case 'nombre_cedula': {
                     const primerNombre = normalizeText(nombre.trim().split(/\s+/)[0] || '');
+                    // Capitalizar primera letra
+                    const nombreCap = primerNombre.charAt(0).toUpperCase() + primerNombre.slice(1);
                     const ultimos4 = (cedula || '0000').slice(-4);
-                    return primerNombre + ultimos4;
+                    pwd = nombreCap + ultimos4;
+                    return enforcePasswordPolicy(pwd);
                 }
                 case 'apellido_anio': {
                     const partes = nombre.trim().split(/\s+/);
                     const apellido = normalizeText(partes.length > 1 ? partes[partes.length - 1] : partes[0]);
-                    return apellido + (anio || '2000');
+                    // Capitalizar primera letra
+                    const apellidoCap = apellido.charAt(0).toUpperCase() + apellido.slice(1);
+                    pwd = apellidoCap + (anio || '2000');
+                    return enforcePasswordPolicy(pwd);
                 }
                 case 'patron_fijo':
-                    return document.getElementById('configPasswordFijo').value || 'Lab2024!';
+                    pwd = document.getElementById('configPasswordFijo').value || 'Lab20241';
+                    return enforcePasswordPolicy(pwd);
                 default:
-                    return 'Pass' + Math.floor(Math.random() * 10000);
+                    return enforcePasswordPolicy('Pass' + Math.floor(Math.random() * 10000));
             }
         }
 
@@ -5628,16 +5664,32 @@
 
         function exportarCredencialesCSV() {
             if (!window.lastCredenciales) return;
-            let csv = 'Nombre,Email,Contraseña,Rol\n';
-            window.lastCredenciales.forEach(c => {
-                csv += `"${c.nombre}","${c.email}","${c.password}","${c.rol}"\n`;
-            });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'credenciales_generadas.csv';
-            link.click();
-            showNotification('CSV exportado');
+            const MAX_PER_FILE = 200;
+            const total = window.lastCredenciales.length;
+            const numFiles = Math.ceil(total / MAX_PER_FILE);
+
+            for (let f = 0; f < numFiles; f++) {
+                const start = f * MAX_PER_FILE;
+                const end = Math.min(start + MAX_PER_FILE, total);
+                const chunk = window.lastCredenciales.slice(start, end);
+
+                let csv = 'Nombre,Email,Contraseña,Rol\n';
+                chunk.forEach(c => {
+                    csv += `"${c.nombre}","${c.email}","${c.password}","${c.rol}"\n`;
+                });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                const suffix = numFiles > 1 ? '_parte' + (f + 1) + 'de' + numFiles : '';
+                link.download = 'credenciales_generadas' + suffix + '.csv';
+                link.click();
+            }
+
+            if (numFiles > 1) {
+                showNotification('CSV exportado en ' + numFiles + ' archivos (máx. 200 registros cada uno)');
+            } else {
+                showNotification('CSV exportado');
+            }
         }
     </script>
 </body>
